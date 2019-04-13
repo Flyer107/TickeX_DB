@@ -51,6 +51,7 @@ sess.init_app(app)
 """
 ############# HELPER METHODS ##############
 """
+# expects an integer and returns a random string of the parameter size
 def get_salt(N):
     return ''.join(random.SystemRandom().choice(string.ascii_lowercase +
                    string.ascii_uppercase + string.digits) for _ in range(N))
@@ -61,15 +62,29 @@ def get_salt(N):
 """
 @app.route('/', methods=["GET", "POST"])
 def index():
+    if 'user_id' not in session:
+        return render_template('login.html')
+
     return render_template('index.html')
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        #pw checking
+        # check that username is not already used
+        user_id = login()
+
+        session['user_id'] = user_id
+
     return render_template('login.html')
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
-    return render_template('register.html')
+
+    myDict = {'names' : ['Jake', 'kam']}
+
+    return render_template('register.html', names = myDict)
 
 @app.route('/terms_and_conditions', methods=["GET", "POST"])
 def terms_and_conditions():
@@ -128,7 +143,7 @@ if __name__ == "__main__":
 #        results = mycol.find_all({'source' : 'Unkown'})
 #        for result in results:
 #            result 
-    app.run(debug=False)
+    app.run(debug=True)
     
 """
     client = None
@@ -136,8 +151,9 @@ if __name__ == "__main__":
         client = connect_db()
         database = db_name()
         mydb = client[database]
-        mycol = mydb['testing']
-        mycol.insert_one({'hello_world' : True })
+        mycollection = mydb['testing']
+        mycollection.insert_one({'hello_world' : True })
+        does_user_exits = mycollection.find_one({'_id' : user_ud })
         
     except Exception as err:
        # with open('loggedErrors.txt' 'a+') as file:
