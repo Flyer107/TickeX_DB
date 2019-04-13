@@ -100,7 +100,7 @@
               </li>
               {#<!-- <li><a class="titles main-nav-item" href="#">Gallery</a></li> -->#}
               <li>
-                <a class="titles main-nav-item" href="#">My Orders</a>
+                <a class="titles main-nav-item" href="#">Tickets</a>
               </li>
               <li class="dropdown">
                 <a
@@ -118,6 +118,13 @@
                   {#<!-- <li>
                     <a class="titles main-nav-item" href="{{ url_for('user_settings') }}">Settings</a>
                   </li> -->#}
+                  <li>
+                    <a
+                      class="titles main-nav-item"
+                      href="{{ url_for('account') }}"
+                      >My Account</a
+                    >
+                  </li>
                   <li>
                     <a
                       class="titles main-nav-item"
@@ -148,7 +155,17 @@
                   >Log In</a
                 >
               </li>
-
+              <li id ='login-form'>
+                <form class="navbar-form navbar-right">
+            <div class="form-group">
+              <input type="text" placeholder="Email" class="form-control">
+            </div>
+            <div class="form-group">
+              <input type="password" placeholder="Password" class="form-control">
+            </div>
+            <button type="submit" class="btn btn-success">Sign in</button>
+          </form>
+              </li>
             </ul>
             {% endif %}
           </div>

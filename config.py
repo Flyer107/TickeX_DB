@@ -6,7 +6,7 @@ Created on Thu Nov  8 16:16:09 2018
 """
 def getKeys():
     try:
-        dotenv = '.env.ini'
+        dotenv = 'env.ini'
         with open(dotenv, 'r') as file:
             content = file.readlines()
         
