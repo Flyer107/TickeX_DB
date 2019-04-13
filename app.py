@@ -4,11 +4,17 @@ Created on Sun Aug  5 14:58:57 2018
 
 @author: jake
 """
+import string
 import os
 import os.path
-from flask import Flask, request, render_template, url_for, jsonify, redirect
+from flask import (Flask, flash, redirect, render_template, request,
+                   session, url_for, jsonify, send_from_directory, send_file )
+import requests
+from passlib.apps import custom_app_context as pwd_context
+from flask_session import Session
 from flask_jsglue import JSGlue
 from tempfile import mkdtemp
+
 from helpers import (json)
 from config import getKeys
 #from threading import Thread
@@ -25,6 +31,34 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 settings = getKeys()
 
+secret_Key = settings.get("SECRET_KEY")
+#app.config.update({
+#    'SECRET_KEY': os.environ['SECRET_KEY']
+#})
+app.secret_key = secret_Key
+
+if app.config["DEBUG"]:
+    @app.after_request
+    def after_request(response):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Expires"] = 0
+
+        response.headers["Pragma"] = "no-cache"
+        return response
+
+sess = Session()
+sess.init_app(app)
+"""
+############# HELPER METHODS ##############
+"""
+def get_salt(N):
+    return ''.join(random.SystemRandom().choice(string.ascii_lowercase +
+                   string.ascii_uppercase + string.digits) for _ in range(N))
+
+
+"""
+############### END HELPERS ###################
+"""
 @app.route('/', methods=["GET", "POST"])
 def index():
     return render_template('index.html')
