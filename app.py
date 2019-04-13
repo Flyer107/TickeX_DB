@@ -60,6 +60,11 @@ def get_salt(N):
                                                 string.ascii_uppercase + string.digits) for _ in range(N))
 
 
+CONFIRM_EMAIL = ('<h4>Thanks for joining UMD Ticket Exchange!</h4>' +
+                 '<p> Please click the link below to confirm your email</p>' +
+                 '{}')
+
+
 def send_email(recipient, subject, msg):
     try:
         server = SMTP('smtp.gmail.com', 587)
@@ -120,7 +125,7 @@ def register():
         email = request.form.get('email')
         password = request.form.get('passwpord')
         confirm_password = request.form.get('confirm-password')
-
+        """
         if not username:
             return render_template("register.html", error="must provide username")
         if not email:
@@ -131,12 +136,12 @@ def register():
             return render_template("register.html", error="could not confirm password")
         if password != confirm_password:
             return render_template("register.html", error="could not confirm password")
-
+        """
         password = request.form.get("password")
         # validate password meets conditions
-        if not len(password) >= 8 or not any([x.isdigit() for x in password]) \
-                or not any([x.isupper() for x in password]) or not any([x.islower() for x in password]):
-            return render_template('register.html', error='could not validate password')
+        #if not len(password) >= 8 or not any([x.isdigit() for x in password]) \
+        #        or not any([x.isupper() for x in password]) or not any([x.islower() for x in password]):
+        #    return render_template('register.html', error='could not validate password')
 
         client = None
         try:
@@ -158,12 +163,20 @@ def register():
 
             pass_hash = pwd_context.hash(password + hash_salt)
 
-            user_info = {'_id': get_next_Value(mycollection, 'id_values'),
+            user_info = {'_id': get_next_Value(mycollection, 'id_values', 1),
                          'username': username,
+                         'email': email,
                          'password': pass_hash,
                          'salt': hash_salt,
                          'activated': False}
 
+            random_string = get_salt(45)
+            link_with_url = request.url_root + '/confirm?email={}+pw={}'.format(email, random_string)
+            
+            print("this is the link for url", link_with_url)
+            message = CONFIRM_EMAIL.format(link_with_url)
+#            email_sent = send_email(email, 'Confirm Email', message)
+            return 'got here'
             if username == 'admin':
                 session['admin'] = True
             return redirect(url_for("index"))
