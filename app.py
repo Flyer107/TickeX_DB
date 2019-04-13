@@ -14,7 +14,7 @@ from passlib.apps import custom_app_context as pwd_context
 from flask_session import Session
 from flask_jsglue import JSGlue
 from tempfile import mkdtemp
-import random
+
 from helpers import (json)
 from config import getKeys
 #from threading import Thread
@@ -51,6 +51,7 @@ sess.init_app(app)
 """
 ############# HELPER METHODS ##############
 """
+# expects an integer and returns a random string of the parameter size
 def get_salt(N):
     return ''.join(random.SystemRandom().choice(string.ascii_lowercase +
                    string.ascii_uppercase + string.digits) for _ in range(N))
@@ -61,14 +62,94 @@ def get_salt(N):
 """
 @app.route('/', methods=["GET", "POST"])
 def index():
+
     return render_template('index.html')
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        print(request.form)
+        username = request.form.get('username')
+        return redirect( url_for('index') )
+    return render_template('forgot_password.html')
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    if request.method == 'POST':
+        # get the username or email and password form the form
+        username = request.form.get('username')
+        print(username)
+
+#        session['user_id'] = user_id
+
     return render_template('login.html')
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
+
+    if request.method == 'POST':
+        print(request.form)
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('passwpord')
+        confirm_password = request.form.get('confirm-password')
+
+        if not username:
+            return render_template("register.html", error="must provide username")
+        if not email:
+            return render_template("register.html", error="must provide email")
+        if not password:
+            return render_template("register.html", error="must provide password")
+        if not confirm_password:
+            return render_template("register.html", error="could not confirm password")
+        if password != confirm_password:
+            return render_template("register.html", error="could not confirm password")
+
+        password = request.form.get("password")
+        # validate password meets conditions
+        if not len(password) >= 8 or not any([x.isdigit() for x in password]) \
+                or not any([x.isupper() for x in password]) or not any([x.islower() for x in password]):
+            return render_template('register.html', error='could not validate password')
+        already_exists = []
+        if len(already_exists) >= 1:
+            error_var = "username" if (username == already_exists[0]["username"]) else "email"
+
+            return render_template("register.html", error="{} unavailable".format(error_var))
+
+        hash_salt = get_salt(12)
+
+        pass_hash = pwd_context.hash(password + hash_salt)
+
+        client = None
+        try:
+            client = connect_db()
+            database = db_name()
+            mydb = client[database]
+            mycollection = mydb[settings.get('USER_DB')]
+            mycollection.insert_one({'hello_world': True})
+            does_user_exits = mycollection.find_one({'_id': user_ud})
+
+        except Exception as err:
+            # with open('loggedErrors.txt' 'a+') as file:
+            #    file.write(err)
+            print(err)
+        finally:
+            if client:
+                client.close()
+
+        # results = push user to database
+        # print(confirm_user_added)
+
+        #user_id_num = confirm_user_added[0]["id"]
+
+        #session["user_id"] = user_id_num
+        #session["user_name"] = confirm_user_added[0]["username"]
+
+        if username == 'admin':
+            session['admin'] = True
+            return redirect(url_for("managedates"))
+        return redirect(url_for("index"))
+
     return render_template('register.html')
 
 @app.route('/terms_and_conditions', methods=["GET", "POST"])
@@ -128,15 +209,17 @@ if __name__ == "__main__":
 #        results = mycol.find_all({'source' : 'Unkown'})
 #        for result in results:
 #            result 
-    app.run(debug=False)
+    app.run(debug=True)
+    
 """
     client = None
     try:
         client = connect_db()
         database = db_name()
         mydb = client[database]
-        mycol = mydb[settings.get("USER_DB")]
-        mycol.insert_one({'hello_world' : True })
+        mycollection = mydb['testing']
+        mycollection.insert_one({'hello_world' : True })
+        does_user_exits = mycollection.find_one({'_id' : user_ud })
         
     except Exception as err:
        # with open('loggedErrors.txt' 'a+') as file:
