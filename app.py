@@ -61,18 +61,12 @@ def get_salt(N):
 """
 @app.route('/', methods=["GET", "POST"])
 def index():
-    session['user_id'] = 'thiss'
     return render_template('index.html')
-@app.route('/account', methods=["GET", "POST"])
-def account():
-    return render_template('account.html')
+
 @app.route('/login', methods=["GET", "POST"])
 def login():
     return render_template('login.html')
-@app.route('/logout', methods=["POST"])
-def logout():
-    session.clear()
-    return render_template('index.html')
+
 @app.route('/register', methods=["GET", "POST"])
 def register():
     return render_template('register.html')
@@ -134,7 +128,7 @@ if __name__ == "__main__":
 #        results = mycol.find_all({'source' : 'Unkown'})
 #        for result in results:
 #            result 
-    app.run(debug=False, port=8000)
+    app.run(debug=False)
     
 """
     client = None
