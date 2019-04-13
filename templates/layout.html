@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    {# https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta #}
+    <meta charset="utf-8" />
+    <meta content="initial-scale=1, width=device-width" name="viewport" />
+
+    <!-- Latest compiled and minified CSS -->
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+      integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+      crossorigin="anonymous"
+    />
+
+    <!-- Optional theme -->
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+      integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp"
+      crossorigin="anonymous"
+    />
+    <!-- required for fa fa-gear TODO LOCAL-->
+    {#<!-- <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+    /> -->#}
+
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='styles.css') }}"
+    />
+
+    <!-- <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" /> -->
+      <!-- Handlres bars expressions js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.5/handlebars.min.js"></script>
+    <!-- JQuery CDN -->
+    <script
+      src="https://code.jquery.com/jquery-3.3.1.min.js"
+      integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+      crossorigin="anonymous"
+    ></script>
+    <!-- local JQuery backup -->
+    {#<!-- <script>
+      window.jQuery ||
+        document.write(
+          "<script src=\"{{ url_for('static', filename='jquery-3.3.1.min.js') }}\"><\/script>"
+        );
+    </script> -->#}
+    <!-- Latest compiled and minified JavaScript bootstrap CDN -->
+    <script
+      src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+      integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+      crossorigin="anonymous"
+    ></script>
+    <script type=text/javascript>
+      $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+    </script>
+    <script id="append-css" type="text/css"></script>
+    {{
+      JSGlue.include()
+    }}
+
+    <title>{% block title %} Lindo Catering {% endblock %}</title>
+  </head>
+
+  <body >
+    <div id="bootstrapCssTest" class="hidden"></div>
+    <div id="layout-page" class="container-fullwidth">
+      <nav class="navbar">
+        <div id="all-nav-bar" class="nav-pad container-fluid">
+          <div class="navbar-header menu" style="margin-right: 0px;">
+            <button
+              aria-expanded="false"
+              class="navbar-toggle collapsed gear"
+              data-target="#navbar"
+              data-toggle="collapse"
+              type="button"
+            ><span class="question-titles"
+                ><span class="glyphicon glyphicon-cog"></span></span></button>
+            <a
+              class="main-nav-item titles navbar-brand"
+              href="{{ url_for('index') }}"
+              ><img
+                style="height: 32px; float:left; padding-right: 10px; margin-top: -5px;"
+                src="#"
+                alt=""
+              /><span>UMD Ticket Exchange</span></a
+            >
+          </div>
+          <div class="collapse navbar-collapse" id="navbar">
+            {% if session.user_id %}
+            <ul id="nav-list" class="nav navbar-nav menu">
+              <li>
+                <a id="user_logged_in" class="titles main-nav-item" href="{{ url_for('index') }}"
+                  >Home</a
+                >
+              </li>
+              {#<!-- <li><a class="titles main-nav-item" href="#">Gallery</a></li> -->#}
+              <li>
+                <a class="titles main-nav-item" href="#">My Orders</a>
+              </li>
+              <li class="dropdown">
+                <a
+                  class="dropdown-toggle titles main-nav-item"
+                  data-toggle="dropdown"
+                  href="#"
+                  >Manage Account<span class="caret"></span
+                ></a>
+                <ul class="dropdown-menu">
+                  {#<!-- <li>
+                    <a class="titles main-nav-item" href="#"
+                      >Incomplete Orders</a
+                    >
+                  </li> -->#}
+                  {#<!-- <li>
+                    <a class="titles main-nav-item" href="{{ url_for('user_settings') }}">Settings</a>
+                  </li> -->#}
+                  <li>
+                    <a
+                      class="titles main-nav-item"
+                      href="{{ url_for('logout') }}"
+                      >Log Out</a
+                    >
+                  </li>
+                </ul>
+              </li>
+            </ul>
+           {% else %}
+            <ul id="nav-list" class="nav navbar-nav menu">
+              <li>
+                <a class="titles main-nav-item" href="#"
+                  ></a
+                >
+              </li>
+              {#<!-- <li><a class="titles main-nav-item" href="#">Gallery</a></li> -->#}
+              <li><a class="titles main-nav-item" href="#">another link</a></li>
+              {#<!-- {{ url_for('orderlookup') }} -->#}
+              <li id ='nav-register'>
+                <a class="titles main-nav-item" href="#"
+                  >Register</a
+                >
+              </li>
+              <li id='nav-login'>
+                <a class="titles main-nav-item" href="#"
+                  >Log In</a
+                >
+              </li>
+
+            </ul>
+            {% endif %}
+          </div>
+        </div>
+      </nav>
+
+      {% if get_flashed_messages() %}
+      <header>
+        <div class="alert alert-info" role="alert">
+          {{ get_flashed_messages() | join(" ") }}
+        </div>
+      </header>
+      {% endif %}
+
+      <main class="back">{% block main %}{% endblock %}</main>
+    </div>
+  </body>
+  <!-- Footer -->
+  <footer
+    style="font-family: LTPro, Arial, Helvetica, sans-serif"
+    class="page-footer font-small pt-4"
+  >
+    <!-- Footer Text -->
+    <div class="container-fluid text-center text-md-left">
+      <!-- Grid row -->
+      <div class="row">
+        <!-- Grid column -->
+        <div class="col-md-6 mt-md-0 mt-3">
+          <!-- Content -->
+         
+          <hr class="clearfix w-100 d-md-none pb-3" />
+          <p>
+         
+          </p>
+          <p>
+          </p>
+        </div>
+        <!-- Grid column -->
+
+        <!-- Grid column -->
+        <div class="col-md-6 mb-md-0 mb-3">
+          <!-- Content -->
+          <h5 class="footer-ele-pad text-uppercase font-weight-bold">
+            Resources
+          </h5>
+          <hr class="clearfix w-100 d-md-none pb-3" />
+          {#<!-- <p><a class="footer-link" href="{{ url_for('terms_and_conditions') }}">Terms and Conditions</a></p> -->#}
+          {#<!-- <p><a class="footer-link" href="{{ url_for('privacy_policy') }}">Privacy Policy</a></p> -->#}
+        </div>
+        <!-- Grid column -->
+      </div>
+      <!-- Grid row -->
+    </div>
+    <!-- Footer Text -->
+
+    <!-- Copyright -->
+    <!-- Copyright -->
+  </footer>
+  <script>
+    $(".gear").click(function() {
+      $(this).toggleClass("rotate");
+    });
+  </script>
+  
+  <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+  <script type='text/javascript'>
+    getDevice();
+  </script>
+  <style>
+  .glyphicon-cog{
+    font-size: 25px;
+  }</style>
+</html>
