@@ -14,7 +14,7 @@ from passlib.apps import custom_app_context as pwd_context
 from flask_session import Session
 from flask_jsglue import JSGlue
 from tempfile import mkdtemp
-
+import random
 from helpers import (json)
 from config import getKeys
 #from threading import Thread
@@ -129,14 +129,13 @@ if __name__ == "__main__":
 #        for result in results:
 #            result 
     app.run(debug=False)
-    
 """
     client = None
     try:
         client = connect_db()
         database = db_name()
         mydb = client[database]
-        mycol = mydb['testing']
+        mycol = mydb[settings.get("USER_DB")]
         mycol.insert_one({'hello_world' : True })
         
     except Exception as err:
