@@ -61,11 +61,20 @@ def get_salt(N):
 """
 @app.route('/', methods=["GET", "POST"])
 def index():
+    session['user_id'] = 'thiss'
     return render_template('index.html')
+
+@app.route('/account', methods=["GET", "POST"])
+def account():
+    return render_template('account.html')
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
     return render_template('login.html')
+
+@app.route('/tickets', methods=["GET", "POST"])
+def tickets():
+    return render_template('tickets.html')
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
@@ -77,7 +86,12 @@ def terms_and_conditions():
 
 @app.route('/privacy_policy', methods=["GET", "POST"])
 def privacy_policy():
-    return render_template('privacy_policy.html')
+    return render_template('privacypolicy.html')
+
+@app.route('/logout', methods=["GET", "POST"])
+def logout():
+    session.clear()
+    return render_template('index.html')
 
 def get_next_Value(collection, sequence_name, value):
     sequence = collection.find_one_and_update(
@@ -128,7 +142,7 @@ if __name__ == "__main__":
 #        results = mycol.find_all({'source' : 'Unkown'})
 #        for result in results:
 #            result 
-    app.run(debug=False)
+    app.run(debug=False, port=8000)
     
 """
     client = None

@@ -5,20 +5,12 @@ head %}
 </script>
 
 {% endblock %} {% block main %}
-<section class="module-medium" id="about">
-          <div class="jumbotron">
-              <div class="container">
-            <div class="row">
-              <div class="col-sm-8 col-sm-offset-2" class="text-center">
-                <h2 class="module-title font-alt">Welcome to the University of Maryland Ticket Exchange</h2>
-                <div class="module-subtitle font-serif large-text">We’re a service created by students for students. Our main purpose is to create a space for UMD students to exchange tickets with ease.
-                </div>
-                  <a class="btn btn-primary btn-sm" href="#" role="button">Click here to see the full list of games »</a>
-              </div>
-            </div>
-          </div>
-          </div>
-        </section>
+<div class="row featurette">
+        <div class="col-md-7 col-centered">
+          <h2 class="featurette-heading">Welcome, <span class="text-muted">{{session.user_id}}!</span></h2>
+          <p class="lead">Here you can view or delete tickets that you have posted on the exchange. You can also accept or deny requests for tickets from other users.</p>
+        </div>
+      </div>
 
 <script type="text/javascript"></script>
 {% endblock %}
