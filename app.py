@@ -25,7 +25,7 @@ from pymongo import MongoClient
 from werkzeug.utils import secure_filename
 
 def getKeys():
-    try:
+    if 'MONGO_STRING' not in os.environ:
         dotenv = '.env.ini'
         with open(dotenv, 'r') as file:
             content = file.readlines()
@@ -35,9 +35,9 @@ def getKeys():
         if file:
             file.close()
         return env_vars
-    except:
+    else:
         return_dict = {}
-        to_return = ['SHUT_DOWN', 'MONGO_STRING', 'MONGO_USER', 'MONGO_USER_PW', 'USER_DB', 'VERIFY_EMAIL_DB', 'GAMES_DB', 'ERROR_DB', 'DB_NAME', 'FOLDER_NAME', 'EMAIL_ADDRESS', 'EMAIL_PASSWORD']
+        to_return = ['MONGO_STRING', 'MONGO_USER', 'MONGO_USER_PW', 'USER_DB', 'VERIFY_EMAIL_DB', 'GAMES_DB', 'ERROR_DB', 'DB_NAME', 'FOLDER_NAME', 'EMAIL_ADDRESS', 'EMAIL_PASSWORD']
         for item in to_return:
             return_dict[item] = os.environ.get(item)
 
@@ -53,7 +53,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 settings = getKeys()
-
+print(settings)
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 print(ROOT_DIR)
 #UPLOAD_FOLDER = os.path.join(ROOT_DIR, settings.get("FOLDER_NAME"))
