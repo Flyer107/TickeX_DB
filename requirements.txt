@@ -23,6 +23,7 @@ Flask-Session==0.3.1
 Flask-Silk==0.2
 Flask-SQLAlchemy==2.2
 future==0.16.0
+gunicorn==19.9.0
 html5lib==0.999999999
 icdiff==1.9.1
 idna==2.6
@@ -77,3 +78,4 @@ WeasyPrint==0.42.3
 webencodings==0.5.1
 Werkzeug==0.14.1
 wrapt==1.10.11
+
