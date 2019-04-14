@@ -240,7 +240,8 @@ def accept_request():
         database = db_name()
         mydb = client[database]
         mycollection = mydb[settings.get('USER_DB')]
-
+        # remove from own requests
+        mycollection.update_one({'_id' : user_id}, {'$pull' : {'requests' : { 'gameName' : gameName}} })
         ## remove the ticket from own uploads
         find_self = mycollection.find_one({'_id' : user_id})
         after_parsing = []
@@ -253,27 +254,31 @@ def accept_request():
                     filename = upload.get('filename')
                 else:
                     after_parsing.append( upload )
+        print(after_parsing)
+
         mycollection.update_one({'_id' : user_id }, {'$set' : {'uploads' : json.dumps(after_parsing) }})
 
         ## update the other uses ticket to approved
         find_user = mycollection.find_one( { 'username' : other_user } )
-
         other_users_requests = find_user.get('my_requests')
 
         after_parsing = []
         if other_users_requests:
             for users_requests in other_users_requests:
-                print(user_requests)
-                if users_requests.other_user == username and user_requests.gameName == gameName:
-                    print('found ticket')
-                    user_requests['approved'] = '1'
-                    user_requests['filename'] = filename
-                after_parsing.append(user_requests)
+                #print(users_requests)
+                if users_requests.get('other_user') and users_requests.get('gameName'):
+                    print(users_requests)
+                    if users_requests.get('other_user') == username and users_requests.get('gameName') == gameName:
+                        print('found ticket')
+                        users_requests['approved'] = '1'
+                        users_requests['filename'] = filename
+                    after_parsing.append(users_requests)
+
         mycollection.update_one({'username' : other_user}, {'$set' : {'my_requests' : after_parsing } })
 
         #remove the ticket from game tickets
         game_collection = mydb[settings.get('GAMES_DB')]
-        game_collection.update({'gameName' : gameName}, {'$pull' : {'tickets' : username} })
+        game_collection.update_many({'gameName' : gameName}, {'$pull' : {'tickets' : username} })
 
     finally:
         if client:
@@ -298,9 +303,11 @@ def account():
         mydb = client[database]
         mycollection = mydb[settings.get('USER_DB')]
         find_user = mycollection.find_one({'_id' : user_id })
+
         uploads = json.loads(find_user.get('uploads'))
         for upload in uploads:
             my_listed.append(upload)
+
         request_from_others = find_user.get('requests')
         if request_from_others:
             print(request_from_others)
