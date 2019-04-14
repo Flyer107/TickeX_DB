@@ -128,22 +128,26 @@ head %}
       <thead>
         <tr>
           <th class="text-center">Event</th>
-          <th class="text-center">Username</th>
-          <th class="text-center">Date</th>
+          <th class="text-center">Username From</th>
+          {#<!-- <th class="text-center">Date</th> -->#}
           <th class="text-center">Download</th>
         </tr>
       </thead>
       <tbody>
-        {% for ticket in posted_tickets %}
+        {% for ticket in my_recieved %}
         <tr>
-          <td>{{ ticket["first_event"] }}</td>
-          <td>{{ ticket["ticket_name"] }}</td>
-          <td>{{ ticket["ticket_date"] }}</td>
+          <td>{{ ticket["gameName"] }}</td>
+
+          <td>{{ ticket["other_user"] }}</td>
+          {#<!-- <td>{{ ticket["ticket_date"] }}</td> -->#}
           <td>
+            <!-- prettier-ignore -->
             <a
+        
+              onclick="download_file('{{ ticket.filename }}')"
               name="downloadTicket"
               class="btn btn-primary btn-sm"
-              href="#"
+              href="/download_file/?file={{ ticket.filename }}"
               role="button"
               >Download »</a
             >
@@ -163,9 +167,12 @@ head %}
       if (data.hasOwnProperty("error")) {
         console.log(data.error);
       } else {
-        location.reload();
+        location.href = "/accout";
       }
     });
+  };
+  const download_file = function(filename) {
+    console.log(filename);
   };
 </script>
 {% endblock %}

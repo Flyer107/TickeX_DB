@@ -294,7 +294,7 @@ def account():
 
     my_listed = []
     requests = []
-    my_bought = []
+    my_recieved = []
 
     client = None
     try:
@@ -313,20 +313,36 @@ def account():
             print(request_from_others)
             for other_request in request_from_others:
                 requests.append(other_request)
+
+        myrequests = find_user.get('my_requests')
+        if myrequests:
+            for this_request in myrequests:
+                print(this_request)
+                if this_request.get('approved') == '1':
+                    my_recieved.append(this_request)
+
     finally:
         if client:
             client.close()
-    print(requests)
+ 
     list_of_tickets = [{'first_event': 'UMD vs Duke', 'ticket_name': 'jake',
                         'ticket_date': '11/20/2019', 'ticket_price': '$10'}]
 
-    return render_template('account.html', posted_tickets=list_of_tickets, my_listed = my_listed, requests = requests)
+    return render_template('account.html', my_recieved = my_recieved, my_listed = my_listed, requests = requests)
 
 
 @app.route('/tickets', methods=["GET", "POST"])
 def tickets():
     return render_template('tickets.html')
 
+@app.route('/download_file/')
+def download_file():
+    filename = request.args.get('file')
+    # return render_template('account.html')
+    try:
+        return send_file(app.config['UPLOAD_FOLDER'] + "\\" + filename)
+    except Exception as error:
+        print(error)
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
@@ -643,10 +659,8 @@ def connect_db():
         'MONGO_USER'), settings.get('MONGO_USER_PW'), 'retryWrites=true')
     return MongoClient(clientString)
 
-
 def db_name():
     return settings.get('DB_NAME')
-
 
 @app.context_processor
 def override_url_for():
