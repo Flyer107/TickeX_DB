@@ -138,7 +138,7 @@ def index():
                 gameList.append(item)
     finally:
         if client:
-            client.close()        
+            client.close()  
     return render_template('index.html', game_list = gameList)
 
 
@@ -226,7 +226,60 @@ def addTicket():
 
     return render_template('addTicket.html', game_list=gameList)
 
+@app.route('/accept_request', methods=["POST"])
+def accept_request():
 
+    username = session['username']
+    other_user = request.form.get('other_user')
+    gameName = request.form.get('gameName')
+    user_id = session['user_id']
+
+    client = None
+    try:
+        client = connect_db()
+        database = db_name()
+        mydb = client[database]
+        mycollection = mydb[settings.get('USER_DB')]
+
+        ## remove the ticket from own uploads
+        find_self = mycollection.find_one({'_id' : user_id})
+        after_parsing = []
+        filename = ''
+        if 'uploads' in find_self:
+            uploads = json.loads( find_self.get('uploads') )
+            print(uploads)
+            for upload in uploads:
+                if upload.get('game_name') == gameName:
+                    filename = upload.get('filename')
+                else:
+                    after_parsing.append( upload )
+        mycollection.update_one({'_id' : user_id }, {'$set' : {'uploads' : json.dumps(after_parsing) }})
+
+        ## update the other uses ticket to approved
+        find_user = mycollection.find_one( { 'username' : other_user } )
+
+        other_users_requests = find_user.get('my_requests')
+
+        after_parsing = []
+        if other_users_requests:
+            for users_requests in other_users_requests:
+                print(user_requests)
+                if users_requests.other_user == username and user_requests.gameName == gameName:
+                    print('found ticket')
+                    user_requests['approved'] = '1'
+                    user_requests['filename'] = filename
+                after_parsing.append(user_requests)
+        mycollection.update_one({'username' : other_user}, {'$set' : {'my_requests' : after_parsing } })
+
+        #remove the ticket from game tickets
+        game_collection = mydb[settings.get('GAMES_DB')]
+        game_collection.update({'gameName' : gameName}, {'$pull' : {'tickets' : username} })
+
+    finally:
+        if client:
+            client.close()
+
+    return jsonify({'error' : 'something went wrong'})
 @app.route('/account', methods=["GET", "POST"])
 def account():
     if 'user_id' not in session:
@@ -235,7 +288,7 @@ def account():
     user_id = session.get('user_id')
 
     my_listed = []
-    my_requests = []
+    requests = []
     my_bought = []
 
     client = None
@@ -248,12 +301,19 @@ def account():
         uploads = json.loads(find_user.get('uploads'))
         for upload in uploads:
             my_listed.append(upload)
+        request_from_others = find_user.get('requests')
+        if request_from_others:
+            print(request_from_others)
+            for other_request in request_from_others:
+                requests.append(other_request)
     finally:
         if client:
             client.close()
+    print(requests)
     list_of_tickets = [{'first_event': 'UMD vs Duke', 'ticket_name': 'jake',
                         'ticket_date': '11/20/2019', 'ticket_price': '$10'}]
-    return render_template('account.html', posted_tickets=list_of_tickets, my_listed = my_listed)
+
+    return render_template('account.html', posted_tickets=list_of_tickets, my_listed = my_listed, requests = requests)
 
 
 @app.route('/tickets', methods=["GET", "POST"])
@@ -273,11 +333,64 @@ def forgot_password():
 def request_ticket():
     if request.method == "POST":
         if 'user_id' not in session or "username" not in session:
-            return render_template('request_ticket.html', error='You must be logged in to request a Ticket')
+            session['request_error'] ='You must be logged in to request a Ticket'
+            return redirect( url_for('request_ticket') )
+
         username = session.get('username')
         user_id = session.get('user_id')
-        return render_template('')
+
+        username_for_ticket = request.form.get('username')
+        gameName = request.form.get('gameName')
+
+        if username == username_for_ticket:
+            session['request_error'] = 'You cannot make a request for your own ticket.'
+            return redirect( url_for('request_ticket') )
+        client = None
+        try:
+            client = connect_db()
+            database = db_name()
+            mydb = client[database]
+            mycollection = mydb[settings.get('USER_DB')]
+            find_user = mycollection.find_one({'username' : username_for_ticket })
+
+            if 'requests' not in find_user:
+                mycollection.update_one({ 'username' : username_for_ticket }, {'$set' : { 'requests' : [] }})
+            else:
+                if len(find_user.get('requests')) > 0:
+                    for each_request in find_user.get('requests'):
+                        if each_request.get('username') == username and each_request.get('gameName') == gameName:
+                            session['request_error'] = "You have already requested this ticket."
+                            return redirect( url_for('request_ticket') )
+
+            mycollection.update_one({ 'username' : username_for_ticket }, 
+                    {"$push" : {'requests': {'username' :username, 'gameName' : gameName} } 
+                                })
+            # find self in database 
+            update_self = mycollection.find_one({'_id' : user_id})
+
+            if not update_self:
+                session['request_error'] = "Something went wrong."
+                return redirect( url_for('request_ticket'))
+
+            if 'my_requests' not in update_self:
+                mycollection.update_one({ '_id' : user_id }, 
+                        {'$set' : { 'my_requests' : [] }
+                    })
+                
+            mycollection.update_one({'_id' : user_id},
+                        {'$push' : {'my_requests' : {'gameName': gameName, 'other_user' : username_for_ticket, 'approved' : '0' } } 
+                    })          
+           # mycollection.update_one({ 'username' : username_for_ticket }, 
+            #                {"$push" : {'requests': { 'username' : username,  } } } )
+
+        finally:
+            if client:
+                client.close()
+        return redirect( url_for('account') )
+
+    error = session.pop('request_error', '')
     ticket_id = session.get('current_ticket')
+
     if not ticket_id:
         return redirect( url_for('index') )
     client = None
@@ -294,8 +407,8 @@ def request_ticket():
                 rating = random.randint(1, 5)
                 number = random.randint(1, 20)
                 uploaded_tickets.append({ "username" : username, 'rating' : rating, 'number_of_ratings' : number})
-                print(uploaded_tickets)
-            return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, gameName = gameName)
+                # print(uploaded_tickets)
+            return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, gameName = gameName, error=error)
         else:
             return render_template('index.html', error='No Tickets found for this Game.')
     finally:
@@ -571,18 +684,16 @@ if __name__ == "__main__":
     #
     app.run(debug=True, port=8000)
 
-    client = None
-    try:
-        client = connect_db()
-        database = db_name()
-        mydb = client[database]
+    # client = None
+    # try:
+    #     client = connect_db()
+    #     database = db_name()
+    #     mydb = client[database]
+    #     gameName = 'Maryland Terrapins vs. Howard Bison'
+    #     username = 'nsobti'
+    #     mycollection = mydb[settings.get('GAMES_DB')]
+    #     mycollection.update({'gameName' : gameName}, {'$pull' : {'tickets' : username} })
 
-        mycollection = mydb[settings.get('USER_DB')]
-        results = mycollection.find_one({'username': username})
-        resulted = mycollection.find_one_and_update(
-            {'email': email}, {'$set': {'activated': 'True'}})
-        print(resulted)
-
-    finally:
-        if client:
-            client.close()
+    # finally:
+    #     if client:
+    #         client.close()

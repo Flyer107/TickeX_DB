@@ -37,30 +37,25 @@ head %}
         <tr>
           <th class="text-center">Event</th>
           <th class="text-center">Username</th>
-          <th class="text-center">Date</th>
+          {#<!-- <th class="text-center">Date</th> -->#}
           <th class="text-center">Accept/Deny</th>
         </tr>
       </thead>
       <tbody>
-        {% for ticket in posted_tickets %}
+        {% for each_request in requests %}
         <tr>
-          <td>{{ ticket["first_event"] }}</td>
-          <td>{{ ticket["ticket_name"] }}</td>
-          <td>{{ ticket["ticket_date"] }}</td>
+          <td>{{ each_request["username"] }}</td>
+          <td>{{ each_request["gameName"] }}</td>
+          {#<!-- <td>{{ ticket["ticket_date"] }}</td> -->#}
           <td>
+            <!-- prettier-ignore -->
             <a
+              onclick="accept_request('{{ each_request.username }}', '{{ each_request.gameName }}')"
               name="accountAccept"
               class="btn btn-primary btn-sm"
               href="#"
               role="button"
               >Accept »</a
-            >
-            <a
-              name="accountDeny"
-              class="btn btn-primary btn-sm"
-              href="#"
-              role="button"
-              >Deny »</a
             >
           </td>
         </tr>
@@ -159,5 +154,18 @@ head %}
     </table>
   </div>
 </div>
-<script type="text/javascript"></script>
+<script type="text/javascript">
+  const accept_request = function(username, gameName) {
+    $.post("/accept_request", {
+      other_user: username,
+      gameName: gameName
+    }).done(function(data) {
+      if (data.hasOwnProperty("error")) {
+        console.log(data.error);
+      } else {
+        location.reload();
+      }
+    });
+  };
+</script>
 {% endblock %}

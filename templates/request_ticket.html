@@ -42,7 +42,7 @@ block head %}
       <td>{{ ticket.number_of_ratings }}</td>
       <td>
         <a
-        onclick="request_ticket('{{ ticket.username }}')"
+        onclick="request_ticket('{{ ticket.username }}', '{{ gameName }}' )"
           name="requestTicket"
           class="btn btn-primary btn-sm"
           href="#"
@@ -58,7 +58,7 @@ block head %}
 </div>
 <form id="request-form" action="" method="POST" class="hidden"></form>
 <script type='text/javascript'>
- const request_ticket = function( username ){
+ const request_ticket = function( username , gameName){
   
     const form = document.getElementById("request-form");
     const hiddenInput = document.createElement("input");
@@ -66,6 +66,12 @@ block head %}
     hiddenInput.setAttribute("name", "username");
     hiddenInput.setAttribute("value", username);
     form.appendChild(hiddenInput);
+
+    const hiddenInput2 = document.createElement("input");
+    hiddenInput2.setAttribute("type", "hidden");
+    hiddenInput2.setAttribute("name", "gameName");
+    hiddenInput2.setAttribute("value", gameName);
+    form.appendChild(hiddenInput2);
     form.submit();
 
 };
