@@ -53,9 +53,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 settings = getKeys()
-print(settings)
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-print(ROOT_DIR)
 #UPLOAD_FOLDER = os.path.join(ROOT_DIR, settings.get("FOLDER_NAME"))
 UPLOAD_FOLDER = ROOT_DIR + settings.get("FOLDER_NAME")
 print(UPLOAD_FOLDER)
