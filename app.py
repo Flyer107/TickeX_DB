@@ -15,8 +15,9 @@ from flask_session import Session
 from flask_jsglue import JSGlue
 from tempfile import mkdtemp
 import random
-from smtplib import SMTP
-from helpers import (json)
+from smtplib import SMTP, SMTP_SSL
+from helpers import (json, requests)
+import datetime
 from config import getKeys
 #from threading import Thread
 from pymongo import MongoClient
@@ -60,29 +61,41 @@ def get_salt(N):
                                                 string.ascii_uppercase + string.digits) for _ in range(N))
 
 
-CONFIRM_EMAIL = ('<h4>Thanks for joining UMD Ticket Exchange!</h4>' +
-                 '<p> Please click the link below to confirm your email</p>' +
+CONFIRM_EMAIL = ('Thanks for joining UMD Ticket Exchange!\n\n' +
+                 'Please click the link below to confirm your email:\n' +
                  '{}')
 
 
 def send_email(recipient, subject, msg):
     try:
-        server = SMTP('smtp.gmail.com', 587)
+        print(settings.get('EMAIL_ADDRESS'), "<-address, ",
+              settings.get("EMAIL_PASSWORD"))
+        #server = SMTP('smtp.gmail.com', 587)
+        server = SMTP_SSL('smtp.gmail.com', 465)
         server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(settings.get('EMAIL_ADDRESS'), settings.get('PASSWORD'))
+        # server.ehlo()
+        # server.starttls()
+        # server.ehlo()
+        server.login(settings.get('EMAIL_ADDRESS'),
+                     settings.get('EMAIL_PASSWORD'))
         message = 'Subject: {}\n\n{}'.format(subject, msg)
+        print(message)
         server.sendmail(settings.get('EMAIL_ADDRESS'), recipient, message)
         server.quit()
-#        print('Success: Email sent!')
+        print('Success: Email sent!')
         return True
 #            print(settings.get('PASSWORD'))
 #            print(settings.get('EMAIL_ADDRESS'))
     except Exception as error:
-        print(error)
+        print('error sending message', error)
         return False
 
+
+def get_date_time():
+    return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def get_date_obj( date_time_str ):
+    return datetime.strptime(date_time_str, '%b %d %Y %I:%M')
 
 """
 ############### END HELPERS ###################
@@ -91,8 +104,20 @@ def send_email(recipient, subject, msg):
 
 @app.route('/', methods=["GET", "POST"])
 def index():
-
+    session['user_id'] = 'thiss'
     return render_template('index.html')
+
+
+@app.route('/account', methods=["GET", "POST"])
+def account():
+    list_of_tickets = [{'first_event': 'UMD vs Duke', 'ticket_name': 'jake',
+                        'ticket_date': '11/20/2019', 'ticket_price': '$10'}]
+    return render_template('account.html', posted_tickets=list_of_tickets)
+
+
+@app.route('/tickets', methods=["GET", "POST"])
+def tickets():
+    return render_template('tickets.html')
 
 
 @app.route('/forgot_password', methods=['GET', 'POST'])
@@ -102,6 +127,12 @@ def forgot_password():
         username = request.form.get('username')
         return redirect(url_for('index'))
     return render_template('forgot_password.html')
+
+
+@app.route('/logout', methods=["GET", "POST"])
+def logout():
+    session.clear()
+    return render_template('index.html')
 
 
 @app.route('/login', methods=["GET", "POST"])
@@ -116,6 +147,14 @@ def login():
     return render_template('login.html')
 
 
+@app.route('/confirm_email', methods=["GET", "POST"])
+def confirm_email():
+    email = request.args.get('email')
+    pw = request.args.get('pw')
+    print(email, " ", pw)
+    return render_template('confirm_email.html')
+
+
 @app.route('/register', methods=["GET", "POST"])
 def register():
 
@@ -123,9 +162,9 @@ def register():
         print(request.form)
         username = request.form.get('username')
         email = request.form.get('email')
-        password = request.form.get('passwpord')
+        password = request.form.get('password')
         confirm_password = request.form.get('confirm-password')
-        """
+
         if not username:
             return render_template("register.html", error="must provide username")
         if not email:
@@ -136,10 +175,10 @@ def register():
             return render_template("register.html", error="could not confirm password")
         if password != confirm_password:
             return render_template("register.html", error="could not confirm password")
-        """
+
         password = request.form.get("password")
         # validate password meets conditions
-        #if not len(password) >= 8 or not any([x.isdigit() for x in password]) \
+        # if not len(password) >= 8 or not any([x.isdigit() for x in password]) \
         #        or not any([x.isupper() for x in password]) or not any([x.islower() for x in password]):
         #    return render_template('register.html', error='could not validate password')
 
@@ -171,25 +210,43 @@ def register():
                          'activated': False}
 
             random_string = get_salt(45)
-            link_with_url = request.url_root + '/confirm?email={}+pw={}'.format(email, random_string)
-            
-            print("this is the link for url", link_with_url)
+
+            link_with_url = request.url_root + \
+                'confirm_email?email={}+pw={}'.format(email, random_string)
+
             message = CONFIRM_EMAIL.format(link_with_url)
-#            email_sent = send_email(email, 'Confirm Email', message)
-            return 'got here'
+
+            email_sent = send_email(
+                email, 'Confirm Email', message)
+
+            if not email_sent:
+                return render_template('register.html', error='Could not verify email.')
+
+            confirm_email_obj = {'username': username, '_id': user_info.get('_id'),
+             'email': email, 'pw': random_string, 'data': get_date_time() }
+
+            email_collections = mydb[settings.get('VERIFY_EMAIL_DB')]
+            email_collections.insert_one(confirm_email_obj)
+            mycollection.insert_one(user_info)
+
             if username == 'admin':
                 session['admin'] = True
-            return redirect(url_for("index"))
+
+            return redirect( url_for("please_confirm_email") )
 
         except Exception as err:
-            with open('logErrors.txt' 'a+') as file:
-                file.write(err)
-                print(err)
+            error_collection = mydb[settings.get('ERROR_DB')]
+            error_collection.insert_one({'error': str(err), 'date/time': get_date_time() })
         finally:
             if client:
                 client.close()
 
     return render_template('register.html')
+
+@app.route('/please_confirm_email', methods=["GET", "POST"])
+def please_confirm_email():
+
+    return render_template('please_confirm_email.html')
 
 
 @app.route('/terms_and_conditions', methods=["GET", "POST"])
@@ -259,26 +316,8 @@ if __name__ == "__main__":
     #        results = mycol.find_all({'source' : 'Unkown'})
     #        for result in results:
     #            result
-    app.run(debug=True)
-"""
-    client = None
-    try:
-        client = connect_db()
-        database = db_name()
-        mydb = client[database]
-        mycollection = mydb[settings.get('USER_DB')]
+    app.run(debug=True, port=8000)    
 
-        found = mycollection.find({'_id' : 'id_values'})
-        print(len(list(found)))
-        
-    except Exception as err:
-       # with open('loggedErrors.txt' 'a+') as file:
-        #    file.write(err)
-        print(err)   
-    finally:
-        if client:
-            client.close()
-"""
 """
     client = None
     try:

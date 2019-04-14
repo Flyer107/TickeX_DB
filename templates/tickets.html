@@ -1,0 +1,47 @@
+{% extends "layout.html" %} {% block title %} Tickets {% endblock %} {% block
+head %}
+<script>
+  Flask.url_for("tickets");
+</script>
+
+{% endblock %} {% block main %}
+<div class="well well-lg">
+  <div class="panel panel-default text-center">
+    <!-- Default panel contents -->
+    <div class="panel-heading">Ticket Exchange</div>
+    <div class="panel-body">
+      <p>Browse all tickets on the exchange</p>
+    </div>
+
+    <!-- Table -->
+    <table class="table text-center">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Username</th>
+          <th>Date</th>
+          <th>Price</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ticket in posted_tickets %}
+        <tr>
+          <td>{{ ticket["first_event"] }}</td>
+          <td>{{ ticket["ticket_name"] }}</td>
+          <td>{{ ticket["ticket_date"] }}</td>
+          <td>{{ ticket["ticket_price"] }}</td>
+          <td>
+            <a class="btn btn-primary btn-sm" href="#" role="button"
+              >Request »</a
+            >
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script type="text/javascript"></script>
+{% endblock %}
