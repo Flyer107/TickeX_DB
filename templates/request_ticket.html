@@ -1,0 +1,74 @@
+{% extends "layout.html" %} {% block title %} Request Ticket {% endblock %} {%
+block head %}
+<script>
+  Flask.url_for("request_ticket");
+</script>
+
+{% endblock %} {% block main %}
+
+<section class="module-medium" id="about">
+  <div class="jumbotron">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-8 col-sm-offset-2 text-center">
+          <h2 class="module-title font-alt">
+            {{ gameName }}
+          </h2>
+          <div class="module-subtitle font-serif large-text">
+            <h3>Request a ticket from the users below.</h3>
+            <p>{{ error }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<table class="request-table table text-center">
+  <thead>
+    <tr>
+      <th class="text-center">Username</th>
+      <th class="text-center">Rating</th>
+      <th class="text-center"># of Rating</th>
+      <th class="text-center">Request</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ticket in uploaded_tickets %}
+    <tr>
+      <td>{{ ticket.username }}</td>
+      <td>{{ ticket.rating }}</td>
+      <td>{{ ticket.number_of_ratings }}</td>
+      <td>
+        <a
+        onclick="request_ticket('{{ ticket.username }}')"
+          name="requestTicket"
+          class="btn btn-primary btn-sm"
+          href="#"
+          role="button"
+          >Request Ticket »</a
+        >
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+</div>
+<form id="request-form" action="" method="POST" class="hidden"></form>
+<script type='text/javascript'>
+ const request_ticket = function( username ){
+  
+    const form = document.getElementById("request-form");
+    const hiddenInput = document.createElement("input");
+    hiddenInput.setAttribute("type", "hidden");
+    hiddenInput.setAttribute("name", "username");
+    hiddenInput.setAttribute("value", username);
+    form.appendChild(hiddenInput);
+    form.submit();
+
+};
+ 
+</script>
+{% endblock %}

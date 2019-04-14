@@ -29,16 +29,17 @@ head %}
     <div class="panel-heading">Ticket Exchange</div>
     <div class="panel-body">
       <p>Browse all tickets on the exchange</p>
+      <p>{{ error }}</p>
     </div>
 
     <!-- Table -->
-    <table class="table table-striped text-left">
+    <table class="table table-striped text-center">
       <thead alli>
         <tr>
-          <th class="not_mapped_style" align="center">Event</th>
-          <th>Date</th>
-          <th>Sport</th>
-          <th># of Tickets</th>
+          <th class="text-center">Event</th>
+          <th class="text-center">Date</th>
+          <th class="text-center">Sport</th>
+          <th class="text-center"># of Tickets</th>
         </tr>
       </thead>
       <tbody>
@@ -54,6 +55,7 @@ head %}
               >{{ game.tickets | length }}</span
             >
             <a
+              onclick="request_ticket('{{ game._id }}')"
               name="requestTicket"
               class="btn btn-primary btn-sm"
               href="#"
@@ -69,6 +71,16 @@ head %}
     </table>
   </div>
 </div>
-
-<script type="text/javascript"></script>
+<form id="request-form" action="" method="POST" class="hidden"></form>
+<script type="text/javascript">
+  const request_ticket = ticket_id => {
+    const form = document.getElementById("request-form");
+    const hiddenInput = document.createElement("input");
+    hiddenInput.setAttribute("type", "hidden");
+    hiddenInput.setAttribute("name", "ticket_id");
+    hiddenInput.setAttribute("value", ticket_id);
+    form.appendChild(hiddenInput);
+    form.submit();
+  };
+</script>
 {% endblock %}

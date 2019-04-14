@@ -1,21 +1,11 @@
 html,
 body {
-  height: 100%;
+  min-height: 100vh;
   margin: 0;
   padding: 0;
   background-color: #000000;
 }
 
-@media (max-width: 600px) {
-  .body {
-    font-size: 20px;
-  }
-}
-@media (min-width: 601px) {
-  .body {
-    font-size: 30px;
-  }
-}
 .main-nav-item {
   transition: color 1s, background-color 1s;
 }
@@ -34,4 +24,7 @@ body {
 
 col-md-6 mt-md-0 mt-3 {
   background-color: #000000;
+}
+.request-table {
+  background-color: white;
 }

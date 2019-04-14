@@ -120,6 +120,10 @@ def allowed_file(filename):
 
 @app.route('/', methods=["GET", "POST"])
 def index():
+    if request.method=="POST":
+        ticket_id = request.form.get('ticket_id')
+        session['current_ticket'] = ticket_id
+        return redirect( url_for('request_ticket') )
     gameList = []
     client = None
     try:
@@ -265,7 +269,39 @@ def forgot_password():
         return redirect(url_for('index'))
     return render_template('forgot_password.html')
 
-
+@app.route('/request_ticket', methods=["GET", "POST"])
+def request_ticket():
+    if request.method == "POST":
+        if 'user_id' not in session or "username" not in session:
+            return render_template('request_ticket.html', error='You must be logged in to request a Ticket')
+        username = session.get('username')
+        user_id = session.get('user_id')
+        return render_template('')
+    ticket_id = session.get('current_ticket')
+    if not ticket_id:
+        return redirect( url_for('index') )
+    client = None
+    try:
+        client = connect_db()
+        database = db_name()
+        mydb = client[database]
+        mycollection = mydb[ settings.get('GAMES_DB') ]
+        result = mycollection.find_one({'_id': int(ticket_id) })
+        uploaded_tickets = []
+        if 'tickets' in result:
+            gameName = result.get('gameName')
+            for username in result.get('tickets'):
+                rating = random.randint(1, 5)
+                number = random.randint(1, 20)
+                uploaded_tickets.append({ "username" : username, 'rating' : rating, 'number_of_ratings' : number})
+                print(uploaded_tickets)
+            return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, gameName = gameName)
+        else:
+            return render_template('index.html', error='No Tickets found for this Game.')
+    finally:
+        if client:
+            client.close() 
+    return render_template('request_ticket.html')
 @app.route('/logout', methods=["GET", "POST"])
 def logout():
     session.clear()
