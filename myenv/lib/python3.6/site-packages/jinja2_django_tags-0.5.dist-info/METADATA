@@ -1,0 +1,25 @@
+Metadata-Version: 2.0
+Name: jinja2-django-tags
+Version: 0.5
+Summary: jinja2 extensions that add django tags
+Home-page: https://github.com/MoritzS/jinja2-django-tags
+Author: Moritz Sichert
+Author-email: moritz.sichert@googlemail.com
+License: BSD
+Keywords: jinja2 jinja django template tags
+Platform: UNKNOWN
+Classifier: Framework :: Django
+Classifier: Environment :: Web Environment
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 2.7
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Requires-Dist: Django (>=1.8)
+Requires-Dist: Jinja2 (>=2.7)
+
+UNKNOWN
+
+

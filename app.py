@@ -138,7 +138,7 @@ def index():
                 gameList.append(item)
     finally:
         if client:
-            client.close()  
+            client.close()
     return render_template('index.html', game_list = gameList)
 
 
@@ -202,7 +202,7 @@ def addTicket():
                         gamescollection.update_one({'gameName' : gameName}, {'$set' : { 'tickets' : [] }})
 
                     gamescollection.update_one({'gameName' : gameName}, {"$push" : {'tickets': username }} )
-                
+
                     file.save(app.config['UPLOAD_FOLDER'] + "\\" + filename)
                 #file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             finally:
@@ -289,7 +289,7 @@ def accept_request():
 def account():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    
+
     user_id = session.get('user_id')
 
     my_listed = []
@@ -324,7 +324,7 @@ def account():
     finally:
         if client:
             client.close()
- 
+
     list_of_tickets = [{'first_event': 'UMD vs Duke', 'ticket_name': 'jake',
                         'ticket_date': '11/20/2019', 'ticket_price': '$10'}]
 
@@ -385,10 +385,10 @@ def request_ticket():
                             session['request_error'] = "You have already requested this ticket."
                             return redirect( url_for('request_ticket') )
 
-            mycollection.update_one({ 'username' : username_for_ticket }, 
-                    {"$push" : {'requests': {'username' :username, 'gameName' : gameName} } 
+            mycollection.update_one({ 'username' : username_for_ticket },
+                    {"$push" : {'requests': {'username' :username, 'gameName' : gameName} }
                                 })
-            # find self in database 
+            # find self in database
             update_self = mycollection.find_one({'_id' : user_id})
 
             if not update_self:
@@ -396,14 +396,14 @@ def request_ticket():
                 return redirect( url_for('request_ticket'))
 
             if 'my_requests' not in update_self:
-                mycollection.update_one({ '_id' : user_id }, 
+                mycollection.update_one({ '_id' : user_id },
                         {'$set' : { 'my_requests' : [] }
                     })
-                
+
             mycollection.update_one({'_id' : user_id},
-                        {'$push' : {'my_requests' : {'gameName': gameName, 'other_user' : username_for_ticket, 'approved' : '0' } } 
-                    })          
-           # mycollection.update_one({ 'username' : username_for_ticket }, 
+                        {'$push' : {'my_requests' : {'gameName': gameName, 'other_user' : username_for_ticket, 'approved' : '0' } }
+                    })
+           # mycollection.update_one({ 'username' : username_for_ticket },
             #                {"$push" : {'requests': { 'username' : username,  } } } )
 
         finally:
@@ -436,7 +436,7 @@ def request_ticket():
             return render_template('index.html', error='No Tickets found for this Game.')
     finally:
         if client:
-            client.close() 
+            client.close()
     return render_template('request_ticket.html')
 @app.route('/logout', methods=["GET", "POST"])
 def logout():
@@ -683,13 +683,6 @@ def shutdown_server():
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
 
-
-@app.route('/shutdown', methods=['GET', 'POST'])
-def shutdown():
-    shutdown_server()
-    return 'Server shutting down...'
-
-
 def update_queries(collection, query, new_values):
     # query must be dict( {'search property' : 'search value'})
     # new_values is dict {'propert to change' : 'value to set to'}
@@ -703,8 +696,9 @@ if __name__ == "__main__":
     #        for result in results:
     #            result
     #
-    app.run(debug=True, port=8000)
-
+    app.debug = True
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
     # client = None
     # try:
     #     client = connect_db()

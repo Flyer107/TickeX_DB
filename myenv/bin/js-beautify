@@ -1,0 +1,7 @@
+#!/home/ubuntu/workspace/TickeX_DB/myenv/bin/python3.6
+#
+# Stub script to run jsbeautifier
+#
+import sys
+from jsbeautifier import main
+sys.exit(main())
