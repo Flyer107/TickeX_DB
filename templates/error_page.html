@@ -1,0 +1,16 @@
+{% extends "layout.html" %} {% block title %} Error Page {% endblock %} {% block
+head %}
+<script>
+  Flask.url_for("error_page");
+</script>
+
+{% endblock %} {% block main %}
+<div class="container">
+  <div class="row">
+    <h2>Error, sorry about that.</h2>
+    <div style="margin-top:20vh;" class="col-xs-12 col-sm-6 col-sm-offset-3">
+      {{ error }}
+    </div>
+  </div>
+</div>
+{% endblock %}

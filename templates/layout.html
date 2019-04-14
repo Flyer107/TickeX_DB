@@ -69,18 +69,23 @@
   <body >
     <div id="bootstrapCssTest" class="hidden"></div>
     <div id="layout-page" class="container-fullwidth">
-      <nav class="navbar">
+      <nav class="navbar navbar-default">
         <div id="all-nav-bar" class="nav-pad container-fluid">
           <div class="navbar-header menu" style="margin-right: 0px;">
+              <a class="navbar-brand" href="{{ url_for('index') }}" title="Exchange student tickets with UMD students.">
+                  <img style="max-width:43px; margin-top: -7px;"
+                       src="https://static1.squarespace.com/static/5717ee8e1bbee08525c09f91/t/576edf349f7456eedf846e32/1466883898480/">
+              </a>
+                
             <button
               aria-expanded="false"
               class="navbar-toggle collapsed gear"
               data-target="#navbar"
               data-toggle="collapse"
-              type="button"
-            ><span class="question-titles"
-                ><span class="glyphicon glyphicon-cog"></span></span></button>
-            <a
+              type="button">
+              <span class="question-titles">
+                <span class="glyphicon glyphicon-cog"></span></span></button>
+                <a
               class="main-nav-item titles navbar-brand"
               href="{{ url_for('index') }}"
               ><img
@@ -100,7 +105,7 @@
               </li>
               {#<!-- <li><a class="titles main-nav-item" href="#">Gallery</a></li> -->#}
               <li>
-                <a class="titles main-nav-item" href="{{ url_for('tickets') }}">Tickets</a>
+                <a class="titles main-nav-item" href="{{ url_for('addTicket') }}">Add Ticket</a>
               </li>
               <li class="dropdown">
                 <a
@@ -138,12 +143,10 @@
            {% else %}
             <ul id="nav-list" class="nav navbar-nav menu">
               <li>
-                <a class="titles main-nav-item" href="#"
-                  ></a
-                >
+                  <a id="user_logged_in" class="titles main-nav-item" href="{{ url_for('index') }}"
+                  >Home</a>
               </li>
               {#<!-- <li><a class="titles main-nav-item" href="#">Gallery</a></li> -->#}
-              <li><a class="titles main-nav-item" href="{{ url_for('tickets') }}">Tickets</a></li>
               {#<!-- {{ url_for('orderlookup') }} -->#}
               <li id ='nav-register'>
                 <a class="titles main-nav-item" href="{{ url_for('register') }}"
@@ -151,18 +154,16 @@
                 >
               </li>
               <li id ='login-form'>
-                <form class="navbar-form navbar-right">
-
-            <div class="form-group">
-              <input type="text" placeholder="Email" class="form-control">
-            </div>
-            <div class="form-group" class="float-right">
-              <input type="password" placeholder="Password" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-success">Sign in</button>
-          </form>
+            <form action="{{ url_for('login') }}" method="post" class="navbar-form navbar-right">    
+              <div class="form-group">
+                <input name='username_email' type="text" placeholder="Email or Username" class="form-control">
+              </div>
+              <div class="form-group" class="float-right">
+                <input name='password' type="password" placeholder="Password" class="form-control">
+              </div>
+              <button name="signIn" type="submit" class="btn btn-primary btn-sm">Sign in</button>
+            </form>
               </li>
-            </ul>
             {% endif %}
           </div>
         </div>
@@ -184,41 +185,7 @@
     style="font-family: LTPro, Arial, Helvetica, sans-serif"
     class="page-footer font-small pt-4"
   >
-    <!-- Footer Text -->
-    <div class="container-fluid text-center text-md-left">
-      <!-- Grid row -->
-      <div class="row">
-        <!-- Grid column -->
-        <div class="col-md-6 mt-md-0 mt-3">
-          <!-- Content -->
-         
-          <hr class="clearfix w-100 d-md-none pb-3" />
-          <p>
-         
-          </p>
-          <p>
-          </p>
-        </div>
-        <!-- Grid column -->
 
-        <!-- Grid column -->
-        <div class="col-md-6 mb-md-0 mb-3">
-          <!-- Content -->
-          <h5 class="footer-ele-pad text-uppercase font-weight-bold">
-            Resources
-          </h5>
-          <hr class="clearfix w-100 d-md-none pb-3" />
-          {#<!-- <p><a class="footer-link" href="{{ url_for('terms_and_conditions') }}">Terms and Conditions</a></p> -->#}
-          {#<!-- <p><a class="footer-link" href="{{ url_for('privacy_policy') }}">Privacy Policy</a></p> -->#}
-        </div>
-        <!-- Grid column -->
-      </div>
-      <!-- Grid row -->
-    </div>
-    <!-- Footer Text -->
-
-    <!-- Copyright -->
-    <!-- Copyright -->
   </footer>
   <script>
     $(".gear").click(function() {

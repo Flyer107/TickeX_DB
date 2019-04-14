@@ -63,7 +63,11 @@ head %}
             that you have read our <a href="#">Data Use Policy.</a></small
           >
           <div class="form-group">
-            <button id="register" class="button button1" type="submit">
+            <button
+              name="register"
+              class="btn btn-primary btn-sm"
+              type="submit"
+            >
               Register
             </button>
           </div>
@@ -72,17 +76,35 @@ head %}
     </div>
 
     <div class="col-sm-3 pass-box" id="message">
-      <h4 class="register-pass-requirements">Password needs:</h4>
-      <p id="letter" class="register-pass-requirements invalid">
+      <h4 style="color: white" class="register-pass-requirements">
+        Password needs:
+      </h4>
+      <p
+        style="color: white"
+        id="letter"
+        class="register-pass-requirements invalid"
+      >
         A <b>lowercase</b> letter
       </p>
-      <p id="capital" class="register-pass-requirements invalid">
+      <p
+        style="color: white"
+        id="capital"
+        class="register-pass-requirements invalid"
+      >
         A <b>capital (uppercase)</b> letter
       </p>
-      <p id="number" class="register-pass-requirements invalid">
+      <p
+        style="color: white"
+        id="number"
+        class="register-pass-requirements invalid"
+      >
         A <b>number</b>
       </p>
-      <p id="length" class="register-pass-requirements invalid">
+      <p
+        style="color: white"
+        id="length"
+        class="register-pass-requirements invalid"
+      >
         Minimum <b>8 characters</b>
       </p>
     </div>

@@ -1,0 +1,85 @@
+{% extends "layout.html" %} {% block title %} Add ticket {% endblock %} {% block
+head %}
+<script>
+  Flask.url_for("addTicket");
+</script>
+
+{% endblock %} {% block main %}
+<section class="module-medium" id="about">
+  <div class="jumbotron text-center">
+    <div class="container">
+      <div class="row">
+        <div class="col-sm-8 col-sm-offset-2" class="text-center">
+          <h2 class="module-title font-alt">
+            Submit your tickets here!
+          </h2>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="jumbotron text-center">
+  <form enctype="multipart/form-data" action="" method="post">
+    <div class="col-md-6">
+      <p class="help-block">Choose the game that matches your ticket.</p>
+      <select name="gameName" class="form-control">
+        {% for game in game_list %}
+        <option value="{{ game.gameName }}">{{ game.gameName }}</option>
+        {% endfor %}
+        <!-- <option>Maryland Terrapins vs. Howard Bison</option>
+        <option>Maryland Terrapins vs. Syracuse Orange</option>
+        <option>Maryland Terrapins vs. Penn State Nittany Lions</option>
+        <option>Maryland Terrapins vs. Indiana Hoosiers</option>
+        <option>Maryland Terrapins vs. Michigan Wolverines</option>
+        <option>Maryland Terrapins vs. Nebraska Cornhuskers</option>
+        <option>Maryland Terrapins vs. DEL</option>
+        <option>Maryland Terrapins vs. NCAT</option>
+        <option>Maryland Terrapins vs. HOFST</option>
+        <option>Maryland Terrapins vs. MSTM</option>
+        <option></option>
+        <option></option>
+        <option></option>
+        <option></option> -->
+      </select>
+    </div>
+    <p class="help-block">Upload the PDF file for your ticket.</p>
+
+    <label for="exampleInputFile">File input</label>
+    <div class="col-md-6 form-group text-center">
+      <input type="file" name="inputFile" />
+    </div>
+    <p class="help-block">It's that simply! Press submit!</p>
+    <button
+      id="submit_ticket"
+      name="addTicket"
+      type="submit"
+      class="btn btn-primary btn-sm"
+    >
+      Click here to submit your ticket »
+    </button>
+  </form>
+</div>
+
+<script type="text/javascript">
+  //   $("#submit_ticket").click(function() {
+  //     const my_data = new FormData();
+  //     my_data.append("file", $("#upload-file")[0].serialize());
+  //     console.log(my_data);
+  //     jQuery.ajax({
+  //       type: "POST",
+  //       url: "/addTicket",
+  //       data: my_data,
+  //       processData: false,
+  //       contentType: false,
+  //       success: function(returnval) {
+  //         console.log("got here");
+  //       }
+  //     });
+  // var form_data = new FormData($("#upload-file")[0]);
+  // $.post("/addTicket", { file: form_data }).done(function() {
+  //   console.log("here");
+  // });
+  // });
+</script>
+{% endblock %}

@@ -1,10 +1,37 @@
-@media ( max-width: 600px ){
-    .body{
-        font-size: 20px
-    }
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #000000;
 }
-@media ( min-width: 601px ) {
-    .body{
-        font-size: 30px
-    }
+
+@media (max-width: 600px) {
+  .body {
+    font-size: 20px;
+  }
+}
+@media (min-width: 601px) {
+  .body {
+    font-size: 30px;
+  }
+}
+.main-nav-item {
+  transition: color 1s, background-color 1s;
+}
+
+.main-nav-item:hover {
+  color: red !important;
+}
+.main-nav-item:active,
+.main-nav-item:link,
+.main-nav-item:visited,
+.main-nav-item:hover {
+  background-color: transparent !important; /* Can be any colour, not just transparent */
+  text-decoration: none;
+  cursor: pointer;
+}
+
+col-md-6 mt-md-0 mt-3 {
+  background-color: #000000;
 }
