@@ -47,7 +47,7 @@ app = Flask(__name__)
 jsglue = JSGlue(app)
 
 # app.jinja_env.add_extension('jinja2.ext.loopcontrols')
-app.config["SESSION_FILE_DIR"] = mkdtemp()
+#app.config["SESSION_FILE_DIR"] = mkdtemp()
 app.config["SESSION_PERMANENT"] = True
 app.config["SESSION_TYPE"] = "filesystem"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -201,7 +201,7 @@ def addTicket():
                         gamescollection.update_one({'gameName' : gameName}, {"$push" : {'tickets': username }} )
 
                         file.save(
-                            app.config['UPLOAD_FOLDER'] + "\\" + filename)
+                            app.config['UPLOAD_FOLDER'] + "/" + filename)
                 else:
                     uploads = json.loads(results.get('uploads'))
                     number_of_files_uploaded = len(uploads)
@@ -221,7 +221,7 @@ def addTicket():
 
                     gamescollection.update_one({'gameName' : gameName}, {"$push" : {'tickets': username }} )
 
-                    file.save(app.config['UPLOAD_FOLDER'] + "\\" + filename)
+                    file.save(app.config['UPLOAD_FOLDER'] + "/" + filename)
                 #file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             finally:
                 if client:
@@ -358,7 +358,7 @@ def download_file():
     filename = request.args.get('file')
     # return render_template('account.html')
     try:
-        return send_file(app.config['UPLOAD_FOLDER'] + "\\" + filename)
+        return send_file(app.config['UPLOAD_FOLDER'] + "/" + filename)
     except Exception as error:
         print(error)
 
