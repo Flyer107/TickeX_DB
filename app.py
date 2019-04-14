@@ -676,13 +676,6 @@ def dated_url_for(endpoint, **values):
             values['q'] = int(os.stat(file_path).st_mtime)
     return url_for(endpoint, **values)
 
-
-def shutdown_server():
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        raise RuntimeError('Not running with the Werkzeug Server')
-    func()
-
 def update_queries(collection, query, new_values):
     # query must be dict( {'search property' : 'search value'})
     # new_values is dict {'propert to change' : 'value to set to'}
