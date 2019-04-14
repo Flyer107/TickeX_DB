@@ -9,6 +9,7 @@ import os
 import os.path
 from flask import (Flask, flash, redirect, render_template, request,
                    session, url_for, jsonify, send_from_directory, send_file)
+import json
 import requests
 from passlib.apps import custom_app_context as pwd_context
 from flask_session import Session
@@ -16,12 +17,31 @@ from flask_jsglue import JSGlue
 from tempfile import mkdtemp
 import random
 from smtplib import SMTP, SMTP_SSL
-from helpers import (json, requests)
+#from helpers import (json, requests)
 import datetime
-from config import getKeys
+#from config import getKeys
 #from threading import Thread
 from pymongo import MongoClient
 from werkzeug.utils import secure_filename
+
+def getKeys():
+    try:
+        dotenv = '.env.ini'
+        with open(dotenv, 'r') as file:
+            content = file.readlines()
+
+        content = [line.strip().split('=') for line in content if '=' in line]
+        env_vars = dict(content)
+        if file:
+            file.close()
+        return env_vars
+    except:
+        return_dict = {}
+        to_return = ['SHUT_DOWN', 'MONGO_STRING', 'MONGO_USER', 'MONGO_USER_PW', 'USER_DB', 'VERIFY_EMAIL_DB', 'GAMES_DB', 'ERROR_DB', 'DB_NAME', 'FOLDER_NAME', 'EMAIL_ADDRESS', 'EMAIL_PASSWORD']
+        for item in to_return:
+            return_dict[item] = os.environ.get(item)
+
+        return return_dict
 
 app = Flask(__name__)
 jsglue = JSGlue(app)
