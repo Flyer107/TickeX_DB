@@ -456,6 +456,7 @@ def request_ticket():
         if client:
             client.close()
     return render_template('request_ticket.html')
+
 @app.route('/logout', methods=["GET", "POST"])
 def logout():
     session.clear()
@@ -468,10 +469,9 @@ def login():
         # get the username or email and password form the form
         username = request.form.get('username_email')
         password = request.form.get('password')
-
         if not username or not password:
             return render_template('index.html')
-        print(username, password)
+
         client = None
         try:
             client = connect_db()
@@ -481,33 +481,33 @@ def login():
             mycollection = mydb[settings.get('USER_DB')]
             result_username = mycollection.find_one({'username': username})
 
-            if len(list(result_username)) < 1:
+            if not result_username:
 
                 result_email = mycollection.find_one({'email': username})
-                if len(list(result_email)) < 1:
 
-                    return render_template('index.html')
+                if not result_email:
+                    return redirect( url_for('index') )
 
-                if not pwd_context.verify(password + result_username.get('salt'), result_username.get('password')):
-                    return render_template("index.html")
+                if not pwd_context.verify(password + result_email.get('salt'), result_email.get('password')):
+                    return redirect( url_for('index') )
 
                 username = result_email.get('username')
                 user_id = result_email.get('_id')
-
                 session['user_id'] = user_id
                 session['username'] = username
-                return render_template('index.html')
+                return redirect( url_for('index') )
 
             else:
 
                 if not pwd_context.verify(password + result_username.get('salt'), result_username.get('password')):
-                    return render_template("index.html")
+                    return redirect( url_for('index') )
 
                 session['username'] = username
                 user_id = result_username.get('_id')
 
                 session['user_id'] = user_id
                 return redirect(url_for('index'))
+
         except Exception as err:
             error_collection = mydb[settings.get('ERROR_DB')]
             error_collection.insert_one(
@@ -515,7 +515,7 @@ def login():
         finally:
             if client:
                 client.close()
-    return render_template('index.html')
+    return redirect( url_for('index') )
 
 
 @app.route('/confirm_email', methods=["GET", "POST"])
