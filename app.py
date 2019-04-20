@@ -7,16 +7,14 @@ Created on Sun Aug  5 14:58:57 2018
 import string
 import os
 import os.path
-from flask import (Flask, flash, redirect, render_template, request,
-                   session, url_for, jsonify, send_from_directory, send_file)
+from flask import (Flask, flash, render_template, request, jsonify, send_from_directory, send_file)
 import requests
-from passlib.apps import custom_app_context as pwd_context
 from flask_session import Session
 from flask_jsglue import JSGlue
 from tempfile import mkdtemp
 import random
 from smtplib import SMTP, SMTP_SSL
-from helpers import (json, requests)
+from helpers import (json, requests, AppMethods, pwd_context, redirect, session, url_for)
 import datetime
 from config import getKeys
 #from threading import Thread
@@ -59,6 +57,7 @@ if app.config["DEBUG"]:
 
 sess = Session()
 sess.init_app(app)
+app_methods = AppMethods()
 """
 ############# HELPER METHODS ##############
 """
@@ -169,10 +168,11 @@ def addTicket():
                 results = mycollection.find_one({'username': username})
 
                 if not results.get('uploads'):
+                    # just to make sure user is logged on
                     if results.get('_id'):
-                        filename = username + '0' + file.filename
+                        filename = secure_filename(file.filename)
                         mycollection.update_one({'username': username}, {
-                                                '$set': {'uploads': json.dumps([{'filename': filename, 'game_name': gameName, 'requested': 'False', 'id': get_salt(5)}])}})
+                                                '$set': {'uploads': [{'filename': filename, 'game_name': gameName, 'requested': 'False', 'id': get_salt(15)} ] }})
                         #file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                         gamescollection = mydb[settings.get('GAMES_DB')]
                         game_result = gamescollection.find_one({'gameName' : gameName})
@@ -185,14 +185,11 @@ def addTicket():
                         file.save(
                             app.config['UPLOAD_FOLDER'] + "\\" + filename)
                 else:
-                    uploads = json.loads(results.get('uploads'))
-                    number_of_files_uploaded = len(uploads)
                     filename = secure_filename(file.filename)
-                    uploads.append(
-                        {'filename': filename, 'game_name': gameName, 'requested': 'False', 'id': get_salt(5)})
-
+                    
+                    new_upload = {'filename': filename, 'game_name': gameName, 'requested': 'False', 'id': get_salt(15)}
                     mycollection.update_one({'username': username}, {
-                                            '$set': {'uploads': json.dumps(uploads)}})
+                                            '$push': {'uploads': new_upload }} )
 
                     gamescollection = mydb[settings.get('GAMES_DB')]
                     game_result = gamescollection.find_one({'gameName' : gameName})
@@ -294,7 +291,7 @@ def account():
 
     my_listed = []
     requests = []
-    my_recieved = []
+    # my_recieved = []
 
     client = None
     try:
@@ -304,32 +301,19 @@ def account():
         mycollection = mydb[settings.get('USER_DB')]
         find_user = mycollection.find_one({'_id' : user_id })
 
-        uploads = json.loads(find_user.get('uploads'))
-        for upload in uploads:
-            my_listed.append(upload)
+        my_listed = json.loads(find_user.get('uploads')) if find_user.get('uploads') else []
 
-        request_from_others = find_user.get('requests')
-        if request_from_others:
-            print(request_from_others)
-            for other_request in request_from_others:
-                requests.append(other_request)
-
-        myrequests = find_user.get('my_requests')
-        if myrequests:
-            for this_request in myrequests:
-                print(this_request)
-                if this_request.get('approved') == '1':
-                    my_recieved.append(this_request)
-
+        requests = find_user.get('requests') if find_user.get('requests') else []
+       
+        my_received = [each_request
+                      for each_request in find_user.get('my_requests')
+                      if each_request.get('approved') == '1'] if find_user.get('my_requests') else []
+        print(find_user)
+        return render_template('account.html', my_recieved = my_received, my_listed = my_listed, requests = requests)
     finally:
         if client:
             client.close()
- 
-    list_of_tickets = [{'first_event': 'UMD vs Duke', 'ticket_name': 'jake',
-                        'ticket_date': '11/20/2019', 'ticket_price': '$10'}]
-
-    return render_template('account.html', my_recieved = my_recieved, my_listed = my_listed, requests = requests)
-
+    return redirect( url_for('index') )
 
 @app.route('/tickets', methods=["GET", "POST"])
 def tickets():
@@ -347,7 +331,6 @@ def download_file():
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
-        print(request.form)
         username = request.form.get('username')
         return redirect(url_for('index'))
     return render_template('forgot_password.html')
@@ -441,8 +424,46 @@ def request_ticket():
 @app.route('/logout', methods=["GET", "POST"])
 def logout():
     session.clear()
-    return render_template('index.html')
+    return redirect( url_for('index') )
 
+def login_manager( mydb, args ):
+
+    mycollection = mydb[settings.get('USER_DB')]
+
+    result_username_or_email = mycollection.find_one({'username': args.get('username')})
+    print(result_username_or_email)
+    if not result_username_or_email:
+        result_username_or_email = mycollection.find_one({'email': args.get('username') })
+
+    if not result_username_or_email:
+        return redirect( url_for('index') )
+
+    if not pwd_context.verify(args.get('password') + result_username_or_email.get('salt'), result_username_or_email.get('password')):
+        return redirect( url_for('index') )
+
+    session['user_id'] = result_username_or_email.get('_id')
+    session['username'] = result_username_or_email.get('username')
+    return redirect( url_for('index') )
+
+def connect_to_db( method, args):
+    client = None
+    try:
+        client = connect_db()
+        database = db_name()
+        mydb = client[database]
+
+        return method( mydb, args )
+
+    except Exception as err:
+        error_collection = mydb[settings.get('ERROR_DB')]
+        error_collection.insert_one(
+            {'error': str(err), 'date/time': get_date_time()})
+        return False
+
+    finally:
+        if client:
+            client.close()
+        return False
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
@@ -450,56 +471,15 @@ def login():
         # get the username or email and password form the form
         username = request.form.get('username_email')
         password = request.form.get('password')
-
         if not username or not password:
             return render_template('index.html')
-        print(username, password)
-        client = None
-        try:
-            client = connect_db()
-            database = db_name()
-            mydb = client[database]
 
-            mycollection = mydb[settings.get('USER_DB')]
-            result_username = mycollection.find_one({'username': username})
+        result = connect_to_db( login_manager, {"username" : username, 'password' : password } )
+        if result:
+            return result
 
-            if len(list(result_username)) < 1:
-
-                result_email = mycollection.find_one({'email': username})
-                if len(list(result_email)) < 1:
-
-                    return render_template('index.html')
-
-                if not pwd_context.verify(password + result_username.get('salt'), result_username.get('password')):
-                    return render_template("index.html")
-
-                username = result_email.get('username')
-                user_id = result_email.get('_id')
-
-                session['user_id'] = user_id
-                session['username'] = username
-                return render_template('index.html')
-
-            else:
-
-                if not pwd_context.verify(password + result_username.get('salt'), result_username.get('password')):
-                    return render_template("index.html")
-
-                session['username'] = username
-                user_id = result_username.get('_id')
-
-                session['user_id'] = user_id
-                return redirect(url_for('index'))
-        except Exception as err:
-            error_collection = mydb[settings.get('ERROR_DB')]
-            error_collection.insert_one(
-                {'error': str(err), 'date/time': get_date_time()})
-        finally:
-            if client:
-                client.close()
-    return render_template('index.html')
-
-
+    return redirect( url_for('index') )
+    
 @app.route('/confirm_email', methods=["GET", "POST"])
 def confirm_email():
     email = request.args.get('email')
@@ -520,24 +500,22 @@ def confirm_email():
             return render_template('error_page.html', error="Could not confirm email")
 
         if results.get('pw') != pw:
-
             return render_template('error_page.html', error="Email or confirmation code not valid")
-        else:
 
-            collection2 = mydb[settings.get('USER_DB')]
-            resulted = collection2.find_one_and_update(
-                {'email': email}, {'$set': {'activated': 'True'}})
-            find_user = collection2.find_one({'email': email})
-            username = find_user.get('username')
-            user_id = find_user.get('_id')
+        collection2 = mydb[settings.get('USER_DB')]
+        resulted = collection2.find_one_and_update(
+            {'email': email}, {'$set': {'activated': 'True'}})
+        find_user = collection2.find_one({'email': email})
+        username = find_user.get('username')
+        user_id = find_user.get('_id')
 
-            if not username or not user_id:
-                return render_template('error_page.html', error='user not found')
+        if not username or not user_id:
+            return render_template('error_page.html', error='user not found')
 
-            session['username'] = find_user.get('username')
-            session['user_id'] = find_user.get('_id')
+        session['username'] = find_user.get('username')
+        session['user_id'] = find_user.get('_id')
 
-            return render_template('index.html')
+        return render_template('index.html')
 
     except Exception as err:
         error_collection = mydb[settings.get('ERROR_DB')]
@@ -682,13 +660,6 @@ def shutdown_server():
     if func is None:
         raise RuntimeError('Not running with the Werkzeug Server')
     func()
-
-
-@app.route('/shutdown', methods=['GET', 'POST'])
-def shutdown():
-    shutdown_server()
-    return 'Server shutting down...'
-
 
 def update_queries(collection, query, new_values):
     # query must be dict( {'search property' : 'search value'})
