@@ -95,21 +95,18 @@ CONFIRM_EMAIL = ('Thanks for joining UMD Ticket Exchange!\n\n' +
 
 def send_email(recipient, subject, msg):
     try:
-        print(settings.get('EMAIL_ADDRESS'), "<-address, ",
-              settings.get("EMAIL_PASSWORD"))
+
         #server = SMTP('smtp.gmail.com', 587)
         server = SMTP_SSL('smtp.gmail.com', 465)
         server.ehlo()
-        # server.ehlo()
-        # server.starttls()
-        # server.ehlo()
+
         server.login(settings.get('EMAIL_ADDRESS'),
                      settings.get('EMAIL_PASSWORD'))
         message = 'Subject: {}\n\n{}'.format(subject, msg)
-        print(message)
+        # print(message)
         server.sendmail(settings.get('EMAIL_ADDRESS'), recipient, message)
         server.quit()
-        print('Success: Email sent!')
+        # print('Success: Email sent!')
         return True
 #            print(settings.get('PASSWORD'))
 #            print(settings.get('EMAIL_ADDRESS'))
@@ -303,6 +300,7 @@ def accept_request():
             client.close()
 
     return jsonify({'error' : 'something went wrong'})
+
 @app.route('/account', methods=["GET", "POST"])
 def account():
     if 'user_id' not in session:
@@ -460,8 +458,49 @@ def request_ticket():
 @app.route('/logout', methods=["GET", "POST"])
 def logout():
     session.clear()
-    return render_template('index.html')
+    return redirect( url_for('index') )
 
+def login_manager( mydb, args ):
+
+    mycollection = mydb[settings.get('USER_DB')]
+
+    result_username_or_email = mycollection.find_one({'username': args.get('username')})
+
+    if not result_username_or_email:
+        result_username_or_email = mycollection.find_one({'email': args.get('username') })
+
+    if not result_username_or_email:
+        return redirect( url_for('index') )
+
+    if not pwd_context.verify(args.get('password') + result_username_or_email.get('salt'), result_username_or_email.get('password')):
+        return redirect( url_for('index') )
+
+    if result_username_or_email.get('username') == 'admin':
+        session['admin'] = True
+
+    session['user_id'] = result_username_or_email.get('_id')
+    session['username'] = result_username_or_email.get('username')
+    return redirect( url_for('index') )
+
+def connect_to_db( method, args):
+    client = None
+    return_value = None
+    try:
+        client = connect_db()
+        database = db_name()
+        mydb = client[database]
+
+        return_value = method( mydb, args )
+
+    except Exception as err:
+        error_collection = mydb[settings.get('ERROR_DB')]
+        error_collection.insert_one(
+            {'error': str(err), 'date/time': get_date_time()})
+        return_value = False
+    finally:
+        if client:
+            client.close()
+        return return_value
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
@@ -472,51 +511,44 @@ def login():
         if not username or not password:
             return render_template('index.html')
 
-        client = None
-        try:
-            client = connect_db()
-            database = db_name()
-            mydb = client[database]
+        result = connect_to_db( login_manager, {"username" : username, 'password' : password } )
+        if result:
+            return result
 
-            mycollection = mydb[settings.get('USER_DB')]
-            result_username = mycollection.find_one({'username': username})
-
-            if not result_username:
-
-                result_email = mycollection.find_one({'email': username})
-
-                if not result_email:
-                    return redirect( url_for('index') )
-
-                if not pwd_context.verify(password + result_email.get('salt'), result_email.get('password')):
-                    return redirect( url_for('index') )
-
-                username = result_email.get('username')
-                user_id = result_email.get('_id')
-                session['user_id'] = user_id
-                session['username'] = username
-                return redirect( url_for('index') )
-
-            else:
-
-                if not pwd_context.verify(password + result_username.get('salt'), result_username.get('password')):
-                    return redirect( url_for('index') )
-
-                session['username'] = username
-                user_id = result_username.get('_id')
-
-                session['user_id'] = user_id
-                return redirect(url_for('index'))
-
-        except Exception as err:
-            error_collection = mydb[settings.get('ERROR_DB')]
-            error_collection.insert_one(
-                {'error': str(err), 'date/time': get_date_time()})
-        finally:
-            if client:
-                client.close()
     return redirect( url_for('index') )
 
+def handle_confirmation( mydb, args ):
+    email = args.get('email')
+    pw = args.get('pw')
+
+    mycollection = mydb[settings.get('VERIFY_EMAIL_DB')]
+
+    results = mycollection.find_one({'email': email})
+    if not len(list(results)) > 0:
+        return render_template('error_page.html', error="Could not confirm email")
+    if results.get('pw') != pw:
+        return render_template('error_page.html', error="Email or confirmation code not valid")
+
+    mycollection.delete_one({'email' : email})
+
+    collection2 = mydb[settings.get('USER_DB')]
+    resulted = collection2.find_one_and_update(
+        {'email': email}, {'$set': {'activated': 'True'}})
+
+    find_user = collection2.find_one({'email': email})
+    username = find_user.get('username')
+    user_id = find_user.get('_id')
+
+    if not username or not user_id:
+        return render_template('error_page.html', error='user not found')
+
+    if username == 'admin':
+        session['admin'] = True
+
+    session['username'] = find_user.get('username')
+    session['user_id'] = find_user.get('_id')
+
+    return redirect( url_for('index') )
 
 @app.route('/confirm_email', methods=["GET", "POST"])
 def confirm_email():
@@ -525,46 +557,12 @@ def confirm_email():
     if not email or not pw:
         return render_template('error_page.html', error='Email or confirmation code not valid')
 
-    client = None
-    try:
-        client = connect_db()
-        database = db_name()
-        mydb = client[database]
-        mycollection = mydb[settings.get('VERIFY_EMAIL_DB')]
-
-        results = mycollection.find_one({'email': email})
-
-        if not len(list(results)) > 0:
-            return render_template('error_page.html', error="Could not confirm email")
-
-        if results.get('pw') != pw:
-
-            return render_template('error_page.html', error="Email or confirmation code not valid")
-        else:
-
-            collection2 = mydb[settings.get('USER_DB')]
-            resulted = collection2.find_one_and_update(
-                {'email': email}, {'$set': {'activated': 'True'}})
-            find_user = collection2.find_one({'email': email})
-            username = find_user.get('username')
-            user_id = find_user.get('_id')
-
-            if not username or not user_id:
-                return render_template('error_page.html', error='user not found')
-
-            session['username'] = find_user.get('username')
-            session['user_id'] = find_user.get('_id')
-
-            return render_template('index.html')
-
-    except Exception as err:
-        error_collection = mydb[settings.get('ERROR_DB')]
-        error_collection.insert_one(
-            {'error': str(err), 'date/time': get_date_time()})
-    finally:
-        if client:
-            client.close()
-    return render_template('confirm_email.html')
+    args = {'email' : email, 'pw' : pw }
+    results = connect_to_db( handle_confirmation, args )
+    if results:
+        return results
+    else:
+        return render_template('error_page.html', error='Something went wrong.')
 
 
 @app.route('/register', methods=["GET", "POST"])
@@ -638,9 +636,6 @@ def register():
             email_collections = mydb[settings.get('VERIFY_EMAIL_DB')]
             email_collections.insert_one(confirm_email_obj)
             mycollection.insert_one(user_info)
-
-            if username == 'admin':
-                session['admin'] = True
 
             return render_template('confirm_email.html')
 
