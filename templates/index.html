@@ -50,12 +50,12 @@ head %}
           <td>{{ game["Start Date"] }}</td>
           <td>{{ game["Start Time"] }}</td>
           <td>{{ game["Sport"] }}</td>
-
-          {% if 'tickets' in game %}
+          {% if 'Tickets' in game %}
           <td>
+            {% if game.Tickets | length > 0 %}
             <span
               style="padding-right: 12px;font-weight: bold;font-size:15px;"
-              >{{ game.tickets | length }}</span
+              >{{ game.Tickets | length }}</span
             >
             <a
               onclick="request_ticket('{{ game._id }}')"
@@ -65,9 +65,9 @@ head %}
               role="button"
               >Request »</a
             >
+            {% endif %}
           </td>
-          {% else %}
-          <td></td>
+
         </tr>
         {% endif %} {% endfor %}
       </tbody>

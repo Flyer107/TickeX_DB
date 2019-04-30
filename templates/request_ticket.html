@@ -12,7 +12,7 @@ block head %}
       <div class="row">
         <div class="col-sm-8 col-sm-offset-2 text-center">
           <h2 class="module-title font-alt">
-            {{ gameName }}
+            {{ Event }} - {{ Date }}
           </h2>
           <div class="module-subtitle font-serif large-text">
             <h3>Request a ticket from the users below.</h3>
@@ -42,7 +42,7 @@ block head %}
       <td>{{ ticket.number_of_ratings }}</td>
       <td>
         <a
-        onclick="request_ticket('{{ ticket.username }}', '{{ gameName }}' )"
+        onclick="request_ticket('{{ ticket.username }}', '{{ ticket.game_id }}', '{{ ticket.ticket_id }}' )"
           name="requestTicket"
           class="btn btn-primary btn-sm"
           href="#"
@@ -58,23 +58,20 @@ block head %}
 </div>
 <form id="request-form" action="" method="POST" class="hidden"></form>
 <script type='text/javascript'>
- const request_ticket = function( username , gameName){
-  
+ const request_ticket = function( username , game_id, ticket_id){
     const form = document.getElementById("request-form");
-    const hiddenInput = document.createElement("input");
-    hiddenInput.setAttribute("type", "hidden");
-    hiddenInput.setAttribute("name", "username");
-    hiddenInput.setAttribute("value", username);
-    form.appendChild(hiddenInput);
+    const args = {'username' : username, 'game_id': game_id, 'ticket_id': ticket_id}
+    for ( const key in args ){
+      const hiddenInput = document.createElement("input");
+      hiddenInput.setAttribute("type", "hidden");
+      hiddenInput.setAttribute("name", key);
+      hiddenInput.setAttribute("value", args[key]);
+      form.appendChild(hiddenInput);
+    }
 
-    const hiddenInput2 = document.createElement("input");
-    hiddenInput2.setAttribute("type", "hidden");
-    hiddenInput2.setAttribute("name", "gameName");
-    hiddenInput2.setAttribute("value", gameName);
-    form.appendChild(hiddenInput2);
     form.submit();
 
 };
- 
+
 </script>
 {% endblock %}

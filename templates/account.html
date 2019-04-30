@@ -6,7 +6,7 @@ head %}
 
 {% endblock %} {% block main %}
 <div class="jumbotron">
-  <div class="row featurette">
+  <div style="margin-right:0px;"class="row featurette">
     <div class="col-md-6 col-md-offset-3 text-center">
       <h2 class="featurette-heading">
         Welcome, <span class="text-muted">{{ session.username }}!</span>
@@ -36,21 +36,21 @@ head %}
       <thead>
         <tr>
           <th class="text-center">Event</th>
+           <th class="text-center">Date</th>
           <th class="text-center">Username</th>
-          {#<!-- <th class="text-center">Date</th> -->#}
           <th class="text-center">Accept/Deny</th>
         </tr>
       </thead>
       <tbody>
         {% for each_request in requests %}
         <tr>
+          <td>{{ each_request["Event"] }}</td>
+          <td>{{ each_request["Start Date"] }}</td>
           <td>{{ each_request["username"] }}</td>
-          <td>{{ each_request["gameName"] }}</td>
-          {#<!-- <td>{{ ticket["ticket_date"] }}</td> -->#}
           <td>
             <!-- prettier-ignore -->
             <a
-              onclick="accept_request('{{ each_request.username }}', '{{ each_request.gameName }}')"
+              onclick="accept_request('{{ each_request.username }}', '{{ each_request.game_id }}')"
               name="accountAccept"
               class="btn btn-primary btn-sm"
               href="#"
@@ -80,6 +80,7 @@ head %}
       <thead>
         <tr>
           <th class="text-center">Event</th>
+          <th class='text-center'>Date</th>
           <th class="text-center">Requests</th>
           <th class="text-center">Remove</th>
         </tr>
@@ -87,7 +88,8 @@ head %}
       <tbody>
         {% for ticket in my_listed %}
         <tr>
-          <td>{{ ticket["Gamename"] }}</td>
+          <td>{{ ticket["Event"] }}</td>
+          <td>{{ ticket["Start Date"]}}</td>
           {% if 'requests' in ticket %}
           {{
             ticket[requests] | length
@@ -143,7 +145,7 @@ head %}
           <td>
             <!-- prettier-ignore -->
             <a
-        
+
               onclick="download_file('{{ ticket.filename }}')"
               name="downloadTicket"
               class="btn btn-primary btn-sm"

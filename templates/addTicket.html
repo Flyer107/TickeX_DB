@@ -13,6 +13,7 @@ head %}
           <h2 class="module-title font-alt">
             Submit your tickets here!
           </h2>
+          <p>{{ error }}</p>
         </div>
       </div>
     </div>
@@ -23,9 +24,9 @@ head %}
   <form enctype="multipart/form-data" action="" method="post">
     <div class="col-md-6">
       <p class="help-block">Choose the game that matches your ticket.</p>
-      <select name="gameName" class="form-control">
+      <select name="game_id" class="form-control">
         {% for game in game_list %}
-        <option value="{{ game.gameName }}">{{ game.Event }} - {{ game["Start Date"] }}</option>
+        <option value="{{ game._id }}">{{ game.Event }} - {{ game["Start Date"] }}</option>
         {% endfor %}
 
       </select>

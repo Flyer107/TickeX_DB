@@ -58,7 +58,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 settings = getKeys()
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 #UPLOAD_FOLDER = os.path.join(ROOT_DIR, settings.get("FOLDER_NAME"))
-slash = "/"
+slash = "/" if settings.get("SLASH", False) else "\\"
 UPLOAD_FOLDER = ROOT_DIR + slash + settings.get("FOLDER_NAME")
 # print(UPLOAD_FOLDER)
 ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'jpeg'])
@@ -183,7 +183,6 @@ def index_manager( mydb, args ):
 
 @app.route('/', methods=["GET", "POST"])
 def index():
-    print(session.get("user_id"))
     if request.method=="POST":
         ticket_id = request.form.get('ticket_id')
         session['current_ticket'] = ticket_id
@@ -194,56 +193,73 @@ def index():
         return gameList
     else:
         return render_template('error_page.html', error="Something went wrong.")
+def parse_game_obj(game_obj, args):
+    game_obj.pop('Tickets')
+    game_obj.pop('_id')
+    for key, value in args.items():
+        game_obj[key] = value
+    return game_obj
 
 def add_ticket_manager(mydb, args):
     file = args.get('file')
     username = args.get('username')
-    gameName = args.get('gameName')
+    game_id = args.get('game_id')
     collection = mydb[user_db()]
     results = collection.find_one({'username': username})
     # as a double check to proceed, but this should always be true.
-    if results.get('uploads'):
-        if results.get('_id'):
-            filename = secure_filename(file.filename)
-            ticket_object = {'filename': filename, 'Event': gameName, 'requested': 'False', 'id': get_salt(15)}
-            collection.update_one({'username': username},
-                                    { '$push': {
-                                     'uploads': ticket_object } })
-            collection = mydb[games_db()]
-            game_result = gamescollection.find_one({'Event' : gameName})
-            ticket_object['username'] = username
-            gamescollection.update_one({'gameName' : gameName}, {"$push" : {'tickets': ticket_object }} )
-            slash = "/"
-            print(slash)
-            file.save( app.config['UPLOAD_FOLDER'] + slash + filename)
-            return True
+    if results.get('_id'):
+        game_collection = mydb[games_db()]
+        game_result = game_collection.find_one({'_id' : int(game_id)})
+                # print(game_result)
+        if not game_result:
+            return "Could not verify game."
+
+        # add the ticket object into the users uploads array.
+        filename = secure_filename(file.filename)
+        ticket_object = parse_game_obj(game_result, {'filename' : filename, 'game_id': game_id, 'ticket_id' : get_salt(15)} )
+        # ticket_object['requested'] = 'False'
+        collection.update_one({'username': username},
+                                { '$push': {
+                                 'uploads': ticket_object } })
+
+        # add the ticket object into the game's tickets array.
+        # add the uploader's username to the ticket object
+        ticket_object['username'] = username
+        game_collection.update_one({'_id' : int(game_id)}, {"$push" : {'Tickets': ticket_object }} )
+        # save the file in the uploads folder
+        slash = "/" if settings.get("SLASH", False) else "\\"
+        file.save( app.config['UPLOAD_FOLDER'] + slash + filename)
+        return ""
 
 def get_all_games(mydb, args):
     collection = mydb[games_db()]
     return collection.find({'_id': {'$gt' : -1 }})
+
 @app.route('/addTicket', methods=["GET", "POST"])
 def addTicket():
     if 'username' not in session:
         return redirect(url_for('index'))
 
+    error_message = ""
+
     if request.method == 'POST':
         if 'inputFile' not in request.files:
             return render_template('addTicket.html', error='No file uploaded.')
-        gameName = request.form.get('gameName')
+        game_id = request.form.get('game_id')
         file = request.files['inputFile']
 
         if file.filename == '':
             return render_template('addTicket.html', error='No file found.')
 
         if file and allowed_file(file.filename):
-            print(file.filename)
+
             username = session['username']
-            args = {'file' : file, 'username' : username, 'gameName' : gameName }
-            connect_to_db( add_ticket_manager, args)
+            args = {'file' : file, 'username' : username, 'game_id' : game_id }
+            error_message = connect_to_db( add_ticket_manager, args)
 
     gameList = connect_to_db( get_all_games, None)
 
-    return render_template('addTicket.html', game_list=gameList)
+    return render_template('addTicket.html', game_list=gameList, error=error_message)
 
 @app.route('/accept_request', methods=["POST"])
 def accept_request():
@@ -437,14 +453,16 @@ def request_ticket():
         mycollection = mydb[ settings.get('GAMES_DB') ]
         result = mycollection.find_one({'_id': int(ticket_id) })
         uploaded_tickets = []
-        if 'tickets' in result:
-            gameName = result.get('gameName')
-            for username in result.get('tickets'):
+        if 'Tickets' in result:
+            Event = result.get('Event')
+            Date= result.get("Start Date", "TBA")
+            for ticket_obj in result.get('Tickets'):
                 rating = random.randint(1, 5)
                 number = random.randint(1, 20)
-                uploaded_tickets.append({ "username" : username, 'rating' : rating, 'number_of_ratings' : number})
+                uploaded_tickets.append({ 'ticket_id': ticket_obj.get('ticket_id'), "username" : ticket_obj.get("username"),
+                'rating' : rating, 'number_of_ratings' : number, 'game_id' : ticket_obj.get("game_id")})
                 # print(uploaded_tickets)
-            return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, gameName = gameName, error=error)
+            return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, Event = Event, Date = Date, error=error)
         else:
             return render_template('index.html', error='No Tickets found for this Game.')
     finally:
@@ -474,8 +492,9 @@ def login_manager( mydb, args ):
     admin = False
     if result_username_or_email.get('username') == 'admin':
         admin = True
-
-    return ( result_username_or_email.get('_id'), result_username_or_email.get('username'), admin )
+    if result_username_or_email.get('_id') and result_username_or_email.get('username'):
+        return ( result_username_or_email.get('_id'), result_username_or_email.get('username'), admin )
+    return False
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
