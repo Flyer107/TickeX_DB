@@ -38,6 +38,7 @@ head %}
         <tr>
           <th class="text-center">Event</th>
           <th class="text-center">Date</th>
+          <th class="text-center">Time</th>
           <th class="text-center">Sport</th>
           <th class="text-center"># of Tickets</th>
         </tr>
@@ -45,9 +46,11 @@ head %}
       <tbody>
         {% for game in game_list %}
         <tr>
-          <td>{{ game["gameName"] }}</td>
-          <td>{{ game["gameDate"] }}</td>
+          <td>{{ game["Event"] }}</td>
+          <td>{{ game["Start Date"] }}</td>
+          <td>{{ game["Start Time"] }}</td>
           <td>{{ game["Sport"] }}</td>
+
           {% if 'tickets' in game %}
           <td>
             <span

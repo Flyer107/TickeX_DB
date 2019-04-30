@@ -5,7 +5,13 @@ body {
   padding: 0;
   background-color: #000000;
 }
-
+.register-box, .confirm-box, .error-box{
+  margin-top: 15vh;
+  border-radius: 15px;
+}
+.pass-box, .confirm-box, .error-box{
+  color: black;
+}
 .main-nav-item {
   transition: color 1s, background-color 1s;
 }

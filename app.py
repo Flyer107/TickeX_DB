@@ -10,14 +10,16 @@ import os.path
 from flask import (Flask, flash, redirect, render_template, request,
                    session, url_for, jsonify, send_from_directory, send_file)
 import json
-import requests
+#import requests
 from passlib.apps import custom_app_context as pwd_context
 from flask_session import Session
+import traceback
 from flask_jsglue import JSGlue
 from tempfile import mkdtemp
 import random
 from smtplib import SMTP, SMTP_SSL
-#from helpers import (json, requests)
+from helpers import (requests, all_ids, csv, get_list_from_sport_id, build_objects,
+                    edit_category_and_sport, parse_schedule, insert_list_into_collection, get_next_Value)
 import datetime
 #from config import getKeys
 #from threading import Thread
@@ -37,7 +39,8 @@ def getKeys():
         return env_vars
     else:
         return_dict = {}
-        to_return = ['MONGO_STRING', 'MONGO_USER', 'MONGO_USER_PW', 'USER_DB', 'VERIFY_EMAIL_DB', 'GAMES_DB', 'ERROR_DB', 'DB_NAME', 'FOLDER_NAME', 'EMAIL_ADDRESS', 'EMAIL_PASSWORD']
+        to_return = ['MONGO_STRING', 'MONGO_USER', 'MONGO_USER_PW', 'USER_DB', 'VERIFY_EMAIL_DB',
+        'GAMES_DB', 'ERROR_DB', 'DB_NAME', 'FOLDER_NAME', 'EMAIL_ADDRESS', 'EMAIL_PASSWORD']
         for item in to_return:
             return_dict[item] = os.environ.get(item)
 
@@ -47,7 +50,7 @@ app = Flask(__name__)
 jsglue = JSGlue(app)
 
 # app.jinja_env.add_extension('jinja2.ext.loopcontrols')
-#app.config["SESSION_FILE_DIR"] = mkdtemp()
+app.config["SESSION_FILE_DIR"] = mkdtemp()
 app.config["SESSION_PERMANENT"] = True
 app.config["SESSION_TYPE"] = "filesystem"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -55,8 +58,9 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 settings = getKeys()
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 #UPLOAD_FOLDER = os.path.join(ROOT_DIR, settings.get("FOLDER_NAME"))
-UPLOAD_FOLDER = ROOT_DIR + settings.get("FOLDER_NAME")
-print(UPLOAD_FOLDER)
+slash = "/"
+UPLOAD_FOLDER = ROOT_DIR + slash + settings.get("FOLDER_NAME")
+# print(UPLOAD_FOLDER)
 ALLOWED_EXTENSIONS = set(['pdf', 'png', 'jpg', 'jpeg'])
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -127,6 +131,50 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def connect_db():
+    clientString = settings.get('MONGO_STRING_2').format(settings.get(
+        'MONGO_USER_2'), settings.get('MONGO_USER_PW_2'), 'retryWrites=true')
+    return MongoClient(clientString)
+# 'USER_DB', 'VERIFY_EMAIL_DB', 'GAMES_DB', 'ERROR_DB', 'DB_NAME', 'FOLDER_NAME'
+def db_name():
+    return settings.get('DB_NAME')
+def games_db():
+    return settings.get("GAMES_DB")
+def user_db():
+    return settings.get("USER_DB")
+def verify_email_db():
+    return settings.get("VERIFY_EMAIL_DB")
+def error_db():
+    return settings.get("ERROR_DB")
+def folder_name():
+    return settings.get("FOLDER_NAME")
+
+def connect_to_db( method, args):
+    client = None
+    return_value = None
+    try:
+        client = connect_db()
+        database = db_name()
+        mydb = client[database]
+
+        return_value = method( mydb, args )
+
+    except Exception as err:
+        print(traceback.print_exc())
+        error_collection = mydb[ error_db() ]
+        error_collection.insert_one(
+            {'error': str(err), 'date/time': get_date_time()})
+        return_value = False
+    finally:
+        if client:
+            client.close()
+        return return_value
+
+def index_manager( mydb, args ):
+    collection = mydb[ games_db() ]
+    gameList = collection.find(  { '_id': { '$gt': -1 } }  )
+    return render_template('index.html', game_list = gameList)
+
 
 """
 ############### END HELPERS ###################
@@ -135,28 +183,44 @@ def allowed_file(filename):
 
 @app.route('/', methods=["GET", "POST"])
 def index():
+    print(session.get("user_id"))
     if request.method=="POST":
         ticket_id = request.form.get('ticket_id')
         session['current_ticket'] = ticket_id
         return redirect( url_for('request_ticket') )
-    gameList = []
-    client = None
-    try:
-        client = connect_db()
-        database = db_name()
-        mydb = client[database]
-        mycollection = mydb[settings.get('GAMES_DB')]
-        value = get_next_Value(mycollection, 'id_values', 0)
-        for x in range(value):
-            item = mycollection.find_one({'_id': x})
-            if len(list(item)) > 0:
-                gameList.append(item)
-    finally:
-        if client:
-            client.close()
-    return render_template('index.html', game_list = gameList)
 
+    gameList = connect_to_db( index_manager, None )
+    if gameList:
+        return gameList
+    else:
+        return render_template('error_page.html', error="Something went wrong.")
 
+def add_ticket_manager(mydb, args):
+    file = args.get('file')
+    username = args.get('username')
+    gameName = args.get('gameName')
+    collection = mydb[user_db()]
+    results = collection.find_one({'username': username})
+    # as a double check to proceed, but this should always be true.
+    if results.get('uploads'):
+        if results.get('_id'):
+            filename = secure_filename(file.filename)
+            ticket_object = {'filename': filename, 'Event': gameName, 'requested': 'False', 'id': get_salt(15)}
+            collection.update_one({'username': username},
+                                    { '$push': {
+                                     'uploads': ticket_object } })
+            collection = mydb[games_db()]
+            game_result = gamescollection.find_one({'Event' : gameName})
+            ticket_object['username'] = username
+            gamescollection.update_one({'gameName' : gameName}, {"$push" : {'tickets': ticket_object }} )
+            slash = "/"
+            print(slash)
+            file.save( app.config['UPLOAD_FOLDER'] + slash + filename)
+            return True
+
+def get_all_games(mydb, args):
+    collection = mydb[games_db()]
+    return collection.find({'_id': {'$gt' : -1 }})
 @app.route('/addTicket', methods=["GET", "POST"])
 def addTicket():
     if 'username' not in session:
@@ -174,70 +238,10 @@ def addTicket():
         if file and allowed_file(file.filename):
             print(file.filename)
             username = session['username']
-            client = None
-            try:
-                client = connect_db()
-                database = db_name()
-                mydb = client[database]
+            args = {'file' : file, 'username' : username, 'gameName' : gameName }
+            connect_to_db( add_ticket_manager, args)
 
-                mycollection = mydb[settings.get('USER_DB')]
-                results = mycollection.find_one({'username': username})
-
-                if not results.get('uploads'):
-                    if results.get('_id'):
-                        filename = username + '0' + file.filename
-                        mycollection.update_one({'username': username}, {
-                                                '$set': {'uploads': json.dumps([{'filename': filename, 'game_name': gameName, 'requested': 'False', 'id': get_salt(5)}])}})
-                        #file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                        gamescollection = mydb[settings.get('GAMES_DB')]
-                        game_result = gamescollection.find_one({'gameName' : gameName})
-
-                        if 'tickets' not in game_result:
-                            gamescollection.update_one({'gameName' : gameName}, {'$set' : { 'tickets' : [] }})
-
-                        gamescollection.update_one({'gameName' : gameName}, {"$push" : {'tickets': username }} )
-
-                        file.save(
-                            app.config['UPLOAD_FOLDER'] + "/" + filename)
-                else:
-                    uploads = json.loads(results.get('uploads'))
-                    number_of_files_uploaded = len(uploads)
-                    filename = secure_filename(file.filename)
-                    uploads.append(
-                        {'filename': filename, 'game_name': gameName, 'requested': 'False', 'id': get_salt(5)})
-
-                    mycollection.update_one({'username': username}, {
-                                            '$set': {'uploads': json.dumps(uploads)}})
-
-                    gamescollection = mydb[settings.get('GAMES_DB')]
-                    game_result = gamescollection.find_one({'gameName' : gameName})
-
-                    if 'tickets' not in game_result:
-
-                        gamescollection.update_one({'gameName' : gameName}, {'$set' : { 'tickets' : [] }})
-
-                    gamescollection.update_one({'gameName' : gameName}, {"$push" : {'tickets': username }} )
-
-                    file.save(app.config['UPLOAD_FOLDER'] + "/" + filename)
-                #file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            finally:
-                if client:
-                    client.close()
-    gameList = []
-    client = None
-    try:
-        client = connect_db()
-        database = db_name()
-        mydb = client[database]
-        mycollection = mydb[settings.get('GAMES_DB')]
-        value = get_next_Value(mycollection, 'id_values', 0)
-        for x in range(value):
-            item = mycollection.find_one({'_id': x})
-            if len(list(item)) > 0:
-                gameList.append(item)
-    finally:
-        if client:
-            client.close()
+    gameList = connect_to_db( get_all_games, None)
 
     return render_template('addTicket.html', game_list=gameList)
 
@@ -254,7 +258,7 @@ def accept_request():
         client = connect_db()
         database = db_name()
         mydb = client[database]
-        mycollection = mydb[settings.get('USER_DB')]
+        mycollection = mydb[user_db()]
         # remove from own requests
         mycollection.update_one({'_id' : user_id}, {'$pull' : {'requests' : { 'gameName' : gameName}} })
         ## remove the ticket from own uploads
@@ -262,7 +266,7 @@ def accept_request():
         after_parsing = []
         filename = ''
         if 'uploads' in find_self:
-            uploads = json.loads( find_self.get('uploads') )
+            uploads = find_self.get('uploads')
             print(uploads)
             for upload in uploads:
                 if upload.get('game_name') == gameName:
@@ -271,7 +275,7 @@ def accept_request():
                     after_parsing.append( upload )
         print(after_parsing)
 
-        mycollection.update_one({'_id' : user_id }, {'$set' : {'uploads' : json.dumps(after_parsing) }})
+        mycollection.update_one({'_id' : user_id }, {'$set' : {'uploads' : after_parsing }})
 
         ## update the other uses ticket to approved
         find_user = mycollection.find_one( { 'username' : other_user } )
@@ -320,17 +324,10 @@ def account():
         mycollection = mydb[settings.get('USER_DB')]
         find_user = mycollection.find_one({'_id' : user_id })
 
-        uploads = json.loads(find_user.get('uploads'))
-        for upload in uploads:
-            my_listed.append(upload)
+        my_listed = find_user.get('uploads', [])
+        requests = find_user.get('requests_from', [])
 
-        request_from_others = find_user.get('requests')
-        if request_from_others:
-            print(request_from_others)
-            for other_request in request_from_others:
-                requests.append(other_request)
-
-        myrequests = find_user.get('my_requests')
+        myrequests = find_user.get('requests_to')
         if myrequests:
             for this_request in myrequests:
                 print(this_request)
@@ -462,10 +459,9 @@ def logout():
 
 def login_manager( mydb, args ):
 
-    mycollection = mydb[settings.get('USER_DB')]
+    mycollection = mydb[user_db()]
 
     result_username_or_email = mycollection.find_one({'username': args.get('username')})
-
     if not result_username_or_email:
         result_username_or_email = mycollection.find_one({'email': args.get('username') })
 
@@ -475,32 +471,11 @@ def login_manager( mydb, args ):
     if not pwd_context.verify(args.get('password') + result_username_or_email.get('salt'), result_username_or_email.get('password')):
         return redirect( url_for('index') )
 
+    admin = False
     if result_username_or_email.get('username') == 'admin':
-        session['admin'] = True
+        admin = True
 
-    session['user_id'] = result_username_or_email.get('_id')
-    session['username'] = result_username_or_email.get('username')
-    return redirect( url_for('index') )
-
-def connect_to_db( method, args):
-    client = None
-    return_value = None
-    try:
-        client = connect_db()
-        database = db_name()
-        mydb = client[database]
-
-        return_value = method( mydb, args )
-
-    except Exception as err:
-        error_collection = mydb[settings.get('ERROR_DB')]
-        error_collection.insert_one(
-            {'error': str(err), 'date/time': get_date_time()})
-        return_value = False
-    finally:
-        if client:
-            client.close()
-        return return_value
+    return ( result_username_or_email.get('_id'), result_username_or_email.get('username'), admin )
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
@@ -513,7 +488,10 @@ def login():
 
         result = connect_to_db( login_manager, {"username" : username, 'password' : password } )
         if result:
-            return result
+            session['user_id'] = result[0]
+            session['username'] = result[1]
+            session['admin'] = result[2]
+            return redirect( url_for('index'))
 
     return redirect( url_for('index') )
 
@@ -524,7 +502,7 @@ def handle_confirmation( mydb, args ):
     mycollection = mydb[settings.get('VERIFY_EMAIL_DB')]
 
     results = mycollection.find_one({'email': email})
-    if not len(list(results)) > 0:
+    if not results:
         return render_template('error_page.html', error="Could not confirm email")
     if results.get('pw') != pw:
         return render_template('error_page.html', error="Email or confirmation code not valid")
@@ -569,7 +547,6 @@ def confirm_email():
 def register():
 
     if request.method == 'POST':
-        print(request.form)
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
@@ -577,7 +554,7 @@ def register():
 
         if not username:
             return render_template("register.html", error="must provide username")
-        if not email or '.umd.edu' not in email:
+        if not email or 'umd.edu' not in email:
             return render_template("register.html", error="No email found or invalid email provided.")
         if not password:
             return render_template("register.html", error="must provide password")
@@ -609,13 +586,17 @@ def register():
 
             pass_hash = pwd_context.hash(password + hash_salt)
 
-            user_info = {'_id': get_next_Value(mycollection, 'id_values', 1),
-                         'username': username,
-                         'email': email,
-                         'password': pass_hash,
-                         'salt': hash_salt,
-                         'activated': 'False',
-                         'tickets': []}
+            user_info = {
+                 '_id': get_next_Value(mycollection, 'id_values', 1),
+                 'username': username,
+                 'email': email,
+                 'password': pass_hash,
+                 'salt': hash_salt,
+                 'activated': 'False',
+                 'uploads': [],
+                 'requests_to': [],
+                 'requests_from': []
+            }
 
             random_string = get_salt(45)
 
@@ -626,7 +607,7 @@ def register():
 
             email_sent = send_email(
                 email, 'Confirm Email', message)
-
+            print(email_sent)
             if not email_sent:
                 return render_template('register.html', error='Could not verify email.')
 
@@ -659,22 +640,6 @@ def terms_and_conditions():
 def privacy_policy():
     return render_template('privacy_policy.html')
 
-
-def get_next_Value(collection, sequence_name, value):
-    sequence = collection.find_one_and_update(
-        {'_id': sequence_name},
-        {'$inc': {'sequence_value': value}})
-    return sequence.get('sequence_value')
-
-
-def connect_db():
-    clientString = settings.get('MONGO_STRING').format(settings.get(
-        'MONGO_USER'), settings.get('MONGO_USER_PW'), 'retryWrites=true')
-    return MongoClient(clientString)
-
-def db_name():
-    return settings.get('DB_NAME')
-
 @app.context_processor
 def override_url_for():
     return dict(url_for=dated_url_for)
@@ -696,25 +661,31 @@ def update_queries(collection, query, new_values):
     num_changed = collection.update_many(query, set_values)
     return num_changed
 
+# FOR EMERGENCY ONLY, will drop all items in a collection.
+def drop_documents(mydb, args):
+    collection = mydb[args.get('collection_name')]
+    collection.remove({'_id' : {'$gt' : -1} })
+
+def decrement_id(mydb, args):
+    collection = mydb[args.get('collection_name')]
+    value = get_next_Value(collection, 'id_values', args.get('val'))
+
+def init_collection(mydb, args):
+    # initialize a collection and add the id values object for keeping serial id's
+    collection = mydb[args.get('collection_name')]
+    collection.insert_one({'_id' : 'id_values', 'sequence_value' : 0})
 
 if __name__ == "__main__":
-    #        results = mycol.find_all({'source' : 'Unkown'})
-    #        for result in results:
-    #            result
-    #
+
     app.debug = True
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-    # client = None
-    # try:
-    #     client = connect_db()
-    #     database = db_name()
-    #     mydb = client[database]
-    #     gameName = 'Maryland Terrapins vs. Howard Bison'
-    #     username = 'nsobti'
-    #     mycollection = mydb[settings.get('GAMES_DB')]
-    #     mycollection.update({'gameName' : gameName}, {'$pull' : {'tickets' : username} })
 
-    # finally:
-    #     if client:
-    #         client.close()
+    #sport = all_ids.get("baseball")
+    #final_list = parse_schedule( sport )
+    #args = {'collection_name' : games_db(), 'list_of_items' : final_list}
+    #connect_to_db( insert_list_into_collection, args )
+
+    #connect_to_db( init_collection, {'collection_name': verify_email_db()} )
+    #connect_to_db( decrement_id, {'collection_name' : games_db()})
+

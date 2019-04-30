@@ -4,7 +4,7 @@ head %}
   Flask.url_for("register");
 </script>
 {% endblock %} {% block main %}
-<div class="container register-content">
+<div class="container register-content jumbotron register-box">
   <p style="color:#de4621;margin-left:30%;" class="question-titles">
     {{ error }}
   </p>
@@ -58,7 +58,7 @@ head %}
               type="password"
             />
           </div>
-          <small style="color: white;font-size: 10px;"
+          <small style="color: black ;font-size: 10px;"
             >By clicking Register, you agree to the <a href="#">Terms</a> and
             that you have read our <a href="#">Data Use Policy.</a></small
           >
@@ -76,32 +76,25 @@ head %}
     </div>
 
     <div class="col-sm-3 pass-box" id="message">
-      <h4 style="color: white" class="register-pass-requirements">
+      <h4 class="register-pass-requirements">
         Password needs:
       </h4>
       <p
-        style="color: white"
         id="letter"
         class="register-pass-requirements invalid"
       >
         A <b>lowercase</b> letter
       </p>
-      <p
-        style="color: white"
-        id="capital"
-        class="register-pass-requirements invalid"
-      >
+      <p id="capital" class="register-pass-requirements invalid">
         A <b>capital (uppercase)</b> letter
       </p>
       <p
-        style="color: white"
         id="number"
         class="register-pass-requirements invalid"
       >
         A <b>number</b>
       </p>
       <p
-        style="color: white"
         id="length"
         class="register-pass-requirements invalid"
       >

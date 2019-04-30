@@ -25,22 +25,9 @@ head %}
       <p class="help-block">Choose the game that matches your ticket.</p>
       <select name="gameName" class="form-control">
         {% for game in game_list %}
-        <option value="{{ game.gameName }}">{{ game.gameName }}</option>
+        <option value="{{ game.gameName }}">{{ game.Event }} - {{ game["Start Date"] }}</option>
         {% endfor %}
-        <!-- <option>Maryland Terrapins vs. Howard Bison</option>
-        <option>Maryland Terrapins vs. Syracuse Orange</option>
-        <option>Maryland Terrapins vs. Penn State Nittany Lions</option>
-        <option>Maryland Terrapins vs. Indiana Hoosiers</option>
-        <option>Maryland Terrapins vs. Michigan Wolverines</option>
-        <option>Maryland Terrapins vs. Nebraska Cornhuskers</option>
-        <option>Maryland Terrapins vs. DEL</option>
-        <option>Maryland Terrapins vs. NCAT</option>
-        <option>Maryland Terrapins vs. HOFST</option>
-        <option>Maryland Terrapins vs. MSTM</option>
-        <option></option>
-        <option></option>
-        <option></option>
-        <option></option> -->
+
       </select>
     </div>
     <p class="help-block">Upload the PDF file for your ticket.</p>
