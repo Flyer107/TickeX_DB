@@ -37,10 +37,11 @@ def get_list_from_sport_id( sport_id ):
         my_list = list(cr)
         return my_list
 
+def is_date_today_or_after(date_string):
+    to_date_object = datetime.datetime.strptime(date_string, '%m/%d/%Y').date()
+    return to_date_object >= datetime.date.today()
+
 def build_objects( list_of_games ):
-    def is_date_after_today(date_string):
-        to_date_object = datetime.datetime.strptime(date_string, '%m/%d/%Y')
-        return to_date_object > datetime.datetime.now()
 
     to_return = []
     titles = list_of_games.pop(0)
@@ -54,7 +55,7 @@ def build_objects( list_of_games ):
         if not start_date:
             new_obj["Start Date"] = "TBA"
 
-        if new_obj.get("Start Date") == "TBA" or is_date_after_today(start_date):
+        if new_obj.get("Start Date") == "TBA" or is_date_today_or_after(start_date):
             new_obj["Tickets"] = []
             category = new_obj.get("Category")
             if category in new_obj.get("Event"):

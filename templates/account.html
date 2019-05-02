@@ -37,6 +37,7 @@ head %}
         <tr>
           <th class="text-center">Event</th>
            <th class="text-center">Date</th>
+           <th class='text-center'>Sport</th>
           <th class="text-center">Username</th>
           <th class="text-center">Accept/Deny</th>
         </tr>
@@ -46,7 +47,8 @@ head %}
         <tr>
           <td>{{ each_request["Event"] }}</td>
           <td>{{ each_request["Start Date"] }}</td>
-          <td>{{ each_request["username"] }}</td>
+          <td>{{ each_request['Sport'] }}</td>
+          <td>{{ each_request["other_user"] }}</td>
           <td>
             <!-- prettier-ignore -->
             <a

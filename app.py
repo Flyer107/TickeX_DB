@@ -19,7 +19,8 @@ from tempfile import mkdtemp
 import random
 from smtplib import SMTP, SMTP_SSL
 from helpers import (requests, all_ids, csv, get_list_from_sport_id, build_objects,
-                    edit_category_and_sport, parse_schedule, insert_list_into_collection, get_next_Value)
+                    edit_category_and_sport, parse_schedule, insert_list_into_collection, get_next_Value,
+                    is_date_today_or_after)
 import datetime
 #from config import getKeys
 #from threading import Thread
@@ -381,6 +382,66 @@ def forgot_password():
         return redirect(url_for('index'))
     return render_template('forgot_password.html')
 
+def make_request_for_ticket(mydb, args):
+
+    # username that uploaded the ticket
+    username_for_ticket = args.get('username_for_ticket')
+    game_id = args.get('game_id')
+    ticket_id = args.get('ticket_id')
+
+    # current logged in user
+    username = args.get('username')
+    user_id = args.get('user_id')
+
+    collection = mydb[ user_db() ]
+    find_user = collection.find_one({'username' : username_for_ticket })
+
+    game_collection = mydb[ games_db() ]
+    find_game = game_collection.find_one({'_id' : int(game_id) })
+    if not find_game:
+        session['request_error'] = "Could not confirm game."
+        return redirect( url_for('request_ticket') )
+
+    has_made_request_already = [request
+                                for request in find_user.get('requests_to')
+                                if request.ticket_id == ticket_id and request.game_id == game_id]
+
+    if len(has_made_request_already) != 0:
+        session['request_error'] = "You have already requested this ticket."
+        return redirect( url_for('request_ticket') )
+
+    request_obj = {"game_id" : game_id, 'other_user': username, 'ticket_id' : ticket_id, 'approved' : '0',
+                    'Sport' : find_game.get("Sport"), 'Event' : find_game.get("Event"), "Start Date" : find_game.get("Start Date")}
+    collection.update_one({ 'username' : username_for_ticket },
+            {"$push" : {'requests_from': request_obj}
+                        })
+
+    request_obj['other_user'] = username_for_ticket
+    collection.update_one({'_id' : user_id},
+                {'$push' : {'requests_to' : request_obj }
+            })
+    return True
+
+def get_tickets_for_game(mydb, args):
+    game_id = args.get('ticket_id')
+    error = args.get('error')
+
+    mycollection = mydb[games_db()]
+
+    # find game in database by its _id
+    result = mycollection.find_one({'_id': int(game_id) })
+    uploaded_tickets = []
+    if 'Tickets' in result:
+        Event = result.get('Event')
+        Date= result.get("Start Date", "TBA")
+        for ticket_obj in result.get('Tickets'):
+            rating = random.randint(1, 5)
+            number = random.randint(1, 20)
+            uploaded_tickets.append({ 'ticket_id': ticket_obj.get('ticket_id'), "username" : ticket_obj.get("username"),
+            'rating' : rating, 'number_of_ratings' : number, 'game_id' : ticket_obj.get("game_id")})
+            # print(uploaded_tickets)
+        return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, Event = Event, Date = Date, error=error)
+
 @app.route('/request_ticket', methods=["GET", "POST"])
 def request_ticket():
     if request.method == "POST":
@@ -392,52 +453,15 @@ def request_ticket():
         user_id = session.get('user_id')
 
         username_for_ticket = request.form.get('username')
-        gameName = request.form.get('gameName')
+        game_id = request.form.get('game_id')
+        ticket_id = request.form.get('ticket_id')
 
         if username == username_for_ticket:
             session['request_error'] = 'You cannot make a request for your own ticket.'
             return redirect( url_for('request_ticket') )
-        client = None
-        try:
-            client = connect_db()
-            database = db_name()
-            mydb = client[database]
-            mycollection = mydb[settings.get('USER_DB')]
-            find_user = mycollection.find_one({'username' : username_for_ticket })
 
-            if 'requests' not in find_user:
-                mycollection.update_one({ 'username' : username_for_ticket }, {'$set' : { 'requests' : [] }})
-            else:
-                if len(find_user.get('requests')) > 0:
-                    for each_request in find_user.get('requests'):
-                        if each_request.get('username') == username and each_request.get('gameName') == gameName:
-                            session['request_error'] = "You have already requested this ticket."
-                            return redirect( url_for('request_ticket') )
-
-            mycollection.update_one({ 'username' : username_for_ticket },
-                    {"$push" : {'requests': {'username' :username, 'gameName' : gameName} }
-                                })
-            # find self in database
-            update_self = mycollection.find_one({'_id' : user_id})
-
-            if not update_self:
-                session['request_error'] = "Something went wrong."
-                return redirect( url_for('request_ticket'))
-
-            if 'my_requests' not in update_self:
-                mycollection.update_one({ '_id' : user_id },
-                        {'$set' : { 'my_requests' : [] }
-                    })
-
-            mycollection.update_one({'_id' : user_id},
-                        {'$push' : {'my_requests' : {'gameName': gameName, 'other_user' : username_for_ticket, 'approved' : '0' } }
-                    })
-           # mycollection.update_one({ 'username' : username_for_ticket },
-            #                {"$push" : {'requests': { 'username' : username,  } } } )
-
-        finally:
-            if client:
-                client.close()
+        args = { 'username' : username, 'user_id' : user_id, 'username_for_ticket' : username_for_ticket, 'game_id' : game_id, 'ticket_id' : ticket_id}
+        response = connect_to_db(make_request_for_ticket, args)
         return redirect( url_for('account') )
 
     error = session.pop('request_error', '')
@@ -445,29 +469,10 @@ def request_ticket():
 
     if not ticket_id:
         return redirect( url_for('index') )
-    client = None
-    try:
-        client = connect_db()
-        database = db_name()
-        mydb = client[database]
-        mycollection = mydb[ settings.get('GAMES_DB') ]
-        result = mycollection.find_one({'_id': int(ticket_id) })
-        uploaded_tickets = []
-        if 'Tickets' in result:
-            Event = result.get('Event')
-            Date= result.get("Start Date", "TBA")
-            for ticket_obj in result.get('Tickets'):
-                rating = random.randint(1, 5)
-                number = random.randint(1, 20)
-                uploaded_tickets.append({ 'ticket_id': ticket_obj.get('ticket_id'), "username" : ticket_obj.get("username"),
-                'rating' : rating, 'number_of_ratings' : number, 'game_id' : ticket_obj.get("game_id")})
-                # print(uploaded_tickets)
-            return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, Event = Event, Date = Date, error=error)
-        else:
-            return render_template('index.html', error='No Tickets found for this Game.')
-    finally:
-        if client:
-            client.close()
+    args = {'ticket_id' : ticket_id, 'error' : error }
+    result = connect_to_db( get_tickets_for_game, args )
+    if result:
+        return result
     return render_template('request_ticket.html')
 
 @app.route('/logout', methods=["GET", "POST"])
@@ -480,20 +485,20 @@ def login_manager( mydb, args ):
     mycollection = mydb[user_db()]
 
     result_username_or_email = mycollection.find_one({'username': args.get('username')})
+
     if not result_username_or_email:
         result_username_or_email = mycollection.find_one({'email': args.get('username') })
-
     if not result_username_or_email:
-        return redirect( url_for('index') )
-
+        return False
     if not pwd_context.verify(args.get('password') + result_username_or_email.get('salt'), result_username_or_email.get('password')):
-        return redirect( url_for('index') )
+        return False
 
     admin = False
     if result_username_or_email.get('username') == 'admin':
         admin = True
     if result_username_or_email.get('_id') and result_username_or_email.get('username'):
         return ( result_username_or_email.get('_id'), result_username_or_email.get('username'), admin )
+
     return False
 
 @app.route('/login', methods=["GET", "POST"])
@@ -510,7 +515,6 @@ def login():
             session['user_id'] = result[0]
             session['username'] = result[1]
             session['admin'] = result[2]
-            return redirect( url_for('index'))
 
     return redirect( url_for('index') )
 
@@ -561,6 +565,52 @@ def confirm_email():
     else:
         return render_template('error_page.html', error='Something went wrong.')
 
+def register_manager(mydb, args):
+    email = args.get('email')
+    username = args.get('username')
+    password = args.get('password')
+
+    mycollection = mydb[user_db()]
+    # check to see if user is already in database
+    results = mycollection.find({'username': username})
+    results_email = mycollection.find({'email': email})
+    if len(list(results)) > 0 or len(list(results_email)) > 0:
+        return render_template('register.html', error='Username or email already in use')
+
+    # get hash salt for hashing password
+    hash_salt = get_salt(12)
+    # encrypt passowrd
+    pass_hash = pwd_context.hash(password + hash_salt)
+
+    # create user object to store in database
+    user_info = {
+         '_id': get_next_Value(mycollection, 'id_values', 1),
+         'username': username,
+         'email': email,
+         'password': pass_hash,
+         'salt': hash_salt,
+         'activated': 'False',
+         'uploads': [],
+         'requests_to': [],
+         'requests_from': []
+    }
+
+    random_string = get_salt(45)
+    # send confirmation email to verify valid email
+    link_with_url = request.url_root + 'confirm_email?email={}&pw={}'.format(email, random_string)
+    message = CONFIRM_EMAIL.format(link_with_url)
+    email_sent = send_email(email, 'Confirm Email', message)
+    if not email_sent:
+        return render_template('register.html', error='Could not verify email.')
+
+    confirm_email_obj = {'username': username, '_id': user_info.get('_id'),
+                         'email': email, 'pw': random_string, 'data': get_date_time()}
+
+    email_collections = mydb[settings.get('VERIFY_EMAIL_DB')]
+    email_collections.insert_one(confirm_email_obj)
+    mycollection.insert_one(user_info)
+
+    return render_template('confirm_email.html')
 
 @app.route('/register', methods=["GET", "POST"])
 def register():
@@ -573,8 +623,8 @@ def register():
 
         if not username:
             return render_template("register.html", error="must provide username")
-        if not email or 'umd.edu' not in email:
-            return render_template("register.html", error="No email found or invalid email provided.")
+        # if not email or 'umd.edu' not in email:
+        #     return render_template("register.html", error="No email found or invalid email provided.")
         if not password:
             return render_template("register.html", error="must provide password")
         if not confirm_password:
@@ -588,64 +638,11 @@ def register():
                 or not any([x.isupper() for x in password]) or not any([x.islower() for x in password]):
             return render_template('register.html', error='could not validate password')
 
-        client = None
-        try:
-            client = connect_db()
-            database = db_name()
-            mydb = client[database]
+        args = {'username' : username, 'email' : email, 'password': password }
 
-            mycollection = mydb[settings.get('USER_DB')]
-
-            results = mycollection.find({'username': username})
-            results_email = mycollection.find({'email': email})
-            if len(list(results)) > 0 or len(list(results_email)) > 0:
-                return render_template('register.html', error='Username or email already in use')
-
-            hash_salt = get_salt(12)
-
-            pass_hash = pwd_context.hash(password + hash_salt)
-
-            user_info = {
-                 '_id': get_next_Value(mycollection, 'id_values', 1),
-                 'username': username,
-                 'email': email,
-                 'password': pass_hash,
-                 'salt': hash_salt,
-                 'activated': 'False',
-                 'uploads': [],
-                 'requests_to': [],
-                 'requests_from': []
-            }
-
-            random_string = get_salt(45)
-
-            link_with_url = request.url_root + \
-                'confirm_email?email={}&pw={}'.format(email, random_string)
-
-            message = CONFIRM_EMAIL.format(link_with_url)
-
-            email_sent = send_email(
-                email, 'Confirm Email', message)
-            print(email_sent)
-            if not email_sent:
-                return render_template('register.html', error='Could not verify email.')
-
-            confirm_email_obj = {'username': username, '_id': user_info.get('_id'),
-                                 'email': email, 'pw': random_string, 'data': get_date_time()}
-
-            email_collections = mydb[settings.get('VERIFY_EMAIL_DB')]
-            email_collections.insert_one(confirm_email_obj)
-            mycollection.insert_one(user_info)
-
-            return render_template('confirm_email.html')
-
-        except Exception as err:
-            error_collection = mydb[settings.get('ERROR_DB')]
-            error_collection.insert_one(
-                {'error': str(err), 'date/time': get_date_time()})
-        finally:
-            if client:
-                client.close()
+        result = connect_to_db(register_manager, args)
+        if result:
+            return result
 
     return render_template('register.html')
 
@@ -693,6 +690,15 @@ def init_collection(mydb, args):
     # initialize a collection and add the id values object for keeping serial id's
     collection = mydb[args.get('collection_name')]
     collection.insert_one({'_id' : 'id_values', 'sequence_value' : 0})
+
+def remove_past_dates_from_db(mydb, args):
+    collection = mydb[ games_db() ]
+    list_of_all_games = collection.find({'_id' : { "$gt" : -1 }})
+    result = list(list_of_all_games)
+    result = [ game for game in result if not is_date_today_or_after(game["Start Date"])]
+    for game in result:
+        collection.remove({'_id' : game._id })
+    return True
 
 if __name__ == "__main__":
 

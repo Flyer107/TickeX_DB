@@ -5,9 +5,7 @@ head %}
 </script>
 {% endblock %} {% block main %}
 <div class="container register-content jumbotron register-box">
-  <p style="color:#de4621;margin-left:30%;" class="question-titles">
-    {{ error }}
-  </p>
+  <p id='error-message' class="question-titles">{{ error }}</p>
   <div class="row">
     <div class="col-sm-4 col-sm-offset-3">
       <form action="{{ url_for('register') }}" method="post">
@@ -104,7 +102,13 @@ head %}
   </div>
 </div>
 
-<script></script>
+<script type='text/javascript'>
+  const error_text = $('#error-message').text()
+  if ( error_text !== ''){
+    $('#error-message').addClass('center-message');
+  }
+  // center-message
+</script>
 <style>
   .form-control {
     width: 100%;
