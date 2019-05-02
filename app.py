@@ -22,30 +22,11 @@ from helpers import (requests, all_ids, csv, get_list_from_sport_id, build_objec
                     edit_category_and_sport, parse_schedule, insert_list_into_collection, get_next_Value,
                     is_date_today_or_after)
 import datetime
-#from config import getKeys
+from config import settings
 #from threading import Thread
 from pymongo import MongoClient
 from werkzeug.utils import secure_filename
 
-def getKeys():
-    if 'MONGO_STRING' not in os.environ:
-        dotenv = '.env.ini'
-        with open(dotenv, 'r') as file:
-            content = file.readlines()
-
-        content = [line.strip().split('=') for line in content if '=' in line]
-        env_vars = dict(content)
-        if file:
-            file.close()
-        return env_vars
-    else:
-        return_dict = {}
-        to_return = ['MONGO_STRING', 'MONGO_USER', 'MONGO_USER_PW', 'USER_DB', 'VERIFY_EMAIL_DB',
-        'GAMES_DB', 'ERROR_DB', 'DB_NAME', 'FOLDER_NAME', 'EMAIL_ADDRESS', 'EMAIL_PASSWORD']
-        for item in to_return:
-            return_dict[item] = os.environ.get(item)
-
-        return return_dict
 
 app = Flask(__name__)
 jsglue = JSGlue(app)
@@ -56,7 +37,6 @@ app.config["SESSION_PERMANENT"] = True
 app.config["SESSION_TYPE"] = "filesystem"
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-settings = getKeys()
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 #UPLOAD_FOLDER = os.path.join(ROOT_DIR, settings.get("FOLDER_NAME"))
 slash = "/" if settings.get("SLASH", False) else "\\"
@@ -83,21 +63,19 @@ if app.config["DEBUG"]:
 sess = Session()
 sess.init_app(app)
 """
-############# HELPER METHODS ##############
+###############################################################################################
+####################################### HELPER METHODS ########################################
+###############################################################################################
 """
 # expects an integer and returns a random string of the parameter size
-
 
 def get_salt(N):
     return ''.join(random.SystemRandom().choice(string.ascii_lowercase +
                                                 string.ascii_uppercase + string.digits) for _ in range(N))
 
-
 CONFIRM_EMAIL = ('Thanks for joining UMD Ticket Exchange!\n\n' +
                  'Please click the link below to confirm your email:\n' +
                  '{}')
-
-
 def send_email(recipient, subject, msg):
     try:
 
@@ -171,29 +149,6 @@ def connect_to_db( method, args):
             client.close()
         return return_value
 
-def index_manager( mydb, args ):
-    collection = mydb[ games_db() ]
-    gameList = collection.find(  { '_id': { '$gt': -1 } }  )
-    return render_template('index.html', game_list = gameList)
-
-
-"""
-############### END HELPERS ###################
-"""
-
-
-@app.route('/', methods=["GET", "POST"])
-def index():
-    if request.method=="POST":
-        ticket_id = request.form.get('ticket_id')
-        session['current_ticket'] = ticket_id
-        return redirect( url_for('request_ticket') )
-
-    gameList = connect_to_db( index_manager, None )
-    if gameList:
-        return gameList
-    else:
-        return render_template('error_page.html', error="Something went wrong.")
 def parse_game_obj(game_obj, args):
     game_obj.pop('Tickets')
     game_obj.pop('_id')
@@ -201,6 +156,19 @@ def parse_game_obj(game_obj, args):
         game_obj[key] = value
     return game_obj
 
+def get_all_games(mydb, args):
+    collection = mydb[games_db()]
+    return collection.find({'_id': {'$gt' : -1 }})
+"""
+###########################################################################################################
+################################## END HELPERS ############################################################
+###########################################################################################################
+"""
+"""
+###########################################################################################################
+############################# MANAGER CONTROLS ############################################################
+###########################################################################################################
+"""
 def add_ticket_manager(mydb, args):
     file = args.get('file')
     username = args.get('username')
@@ -232,9 +200,87 @@ def add_ticket_manager(mydb, args):
         file.save( app.config['UPLOAD_FOLDER'] + slash + filename)
         return ""
 
-def get_all_games(mydb, args):
-    collection = mydb[games_db()]
-    return collection.find({'_id': {'$gt' : -1 }})
+def make_request_for_ticket(mydb, args):
+
+    # username that uploaded the ticket
+    username_for_ticket = args.get('username_for_ticket')
+    game_id = args.get('game_id')
+    ticket_id = args.get('ticket_id')
+
+    # current logged in user
+    username = args.get('username')
+    user_id = args.get('user_id')
+
+    collection = mydb[ user_db() ]
+    find_user = collection.find_one({'username' : username })
+
+    game_collection = mydb[ games_db() ]
+    find_game = game_collection.find_one({'_id' : int(game_id) })
+    if not find_game:
+        return {'error' : "Could not confirm game." }
+        # return redirect( url_for('request_ticket') )
+
+    # check to see if this user has already made a request for this ticket
+    requests_to = find_user.get('requests_to')
+    for previous_request in requests_to:
+        if previous_request.get('ticket_id') == ticket_id and previous_request.get('game_id') == game_id:
+            return {'error' : 'You have already madea request for this ticket.'}
+
+    request_obj = {"game_id" : game_id, 'other_user': username, 'ticket_id' : ticket_id, 'approved' : '0',
+                    'Sport' : find_game.get("Sport"), 'Event' : find_game.get("Event"), "Start Date" : find_game.get("Start Date")}
+    collection.update_one({ 'username' : username_for_ticket },
+            {"$push" : {'requests_from': request_obj}
+                        })
+
+    request_obj['other_user'] = username_for_ticket
+    collection.update_one({'_id' : user_id},
+                {'$push' : {'requests_to' : request_obj }
+            })
+    return {'succes' : ''}
+
+def get_tickets_for_game(mydb, args):
+    game_id = args.get('ticket_id')
+    error = args.get('error')
+
+    mycollection = mydb[games_db()]
+
+    # find game in database by its _id
+    result = mycollection.find_one({'_id': int(game_id) })
+    uploaded_tickets = []
+    if 'Tickets' in result:
+        Event = result.get('Event')
+        Date= result.get("Start Date", "TBA")
+        for ticket_obj in result.get('Tickets'):
+            rating = random.randint(1, 5)
+            number = random.randint(1, 20)
+            uploaded_tickets.append({ 'ticket_id': ticket_obj.get('ticket_id'), "username" : ticket_obj.get("username"),
+            'rating' : rating, 'number_of_ratings' : number, 'game_id' : ticket_obj.get("game_id")})
+            # print(uploaded_tickets)
+        return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, Event = Event, Date = Date, error=error)
+
+def index_manager( mydb, args ):
+    collection = mydb[ games_db() ]
+    gameList = collection.find(  { '_id': { '$gt': -1 } }  )
+    return render_template('index.html', game_list = gameList)
+
+"""
+###########################################################################################################
+################################# END CONTROLS ############################################################
+###########################################################################################################
+"""
+
+@app.route('/', methods=["GET", "POST"])
+def index():
+    if request.method=="POST":
+        ticket_id = request.form.get('ticket_id')
+        session['current_ticket'] = ticket_id
+        return redirect( url_for('request_ticket') )
+
+    gameList = connect_to_db( index_manager, None )
+    if gameList:
+        return gameList
+    else:
+        return render_template('error_page.html', error="Something went wrong.")
 
 @app.route('/addTicket', methods=["GET", "POST"])
 def addTicket():
@@ -382,66 +428,6 @@ def forgot_password():
         return redirect(url_for('index'))
     return render_template('forgot_password.html')
 
-def make_request_for_ticket(mydb, args):
-
-    # username that uploaded the ticket
-    username_for_ticket = args.get('username_for_ticket')
-    game_id = args.get('game_id')
-    ticket_id = args.get('ticket_id')
-
-    # current logged in user
-    username = args.get('username')
-    user_id = args.get('user_id')
-
-    collection = mydb[ user_db() ]
-    find_user = collection.find_one({'username' : username_for_ticket })
-
-    game_collection = mydb[ games_db() ]
-    find_game = game_collection.find_one({'_id' : int(game_id) })
-    if not find_game:
-        session['request_error'] = "Could not confirm game."
-        return redirect( url_for('request_ticket') )
-
-    has_made_request_already = [request
-                                for request in find_user.get('requests_to')
-                                if request.ticket_id == ticket_id and request.game_id == game_id]
-
-    if len(has_made_request_already) != 0:
-        session['request_error'] = "You have already requested this ticket."
-        return redirect( url_for('request_ticket') )
-
-    request_obj = {"game_id" : game_id, 'other_user': username, 'ticket_id' : ticket_id, 'approved' : '0',
-                    'Sport' : find_game.get("Sport"), 'Event' : find_game.get("Event"), "Start Date" : find_game.get("Start Date")}
-    collection.update_one({ 'username' : username_for_ticket },
-            {"$push" : {'requests_from': request_obj}
-                        })
-
-    request_obj['other_user'] = username_for_ticket
-    collection.update_one({'_id' : user_id},
-                {'$push' : {'requests_to' : request_obj }
-            })
-    return True
-
-def get_tickets_for_game(mydb, args):
-    game_id = args.get('ticket_id')
-    error = args.get('error')
-
-    mycollection = mydb[games_db()]
-
-    # find game in database by its _id
-    result = mycollection.find_one({'_id': int(game_id) })
-    uploaded_tickets = []
-    if 'Tickets' in result:
-        Event = result.get('Event')
-        Date= result.get("Start Date", "TBA")
-        for ticket_obj in result.get('Tickets'):
-            rating = random.randint(1, 5)
-            number = random.randint(1, 20)
-            uploaded_tickets.append({ 'ticket_id': ticket_obj.get('ticket_id'), "username" : ticket_obj.get("username"),
-            'rating' : rating, 'number_of_ratings' : number, 'game_id' : ticket_obj.get("game_id")})
-            # print(uploaded_tickets)
-        return render_template('request_ticket.html', uploaded_tickets = uploaded_tickets, Event = Event, Date = Date, error=error)
-
 @app.route('/request_ticket', methods=["GET", "POST"])
 def request_ticket():
     if request.method == "POST":
@@ -462,6 +448,12 @@ def request_ticket():
 
         args = { 'username' : username, 'user_id' : user_id, 'username_for_ticket' : username_for_ticket, 'game_id' : game_id, 'ticket_id' : ticket_id}
         response = connect_to_db(make_request_for_ticket, args)
+        if not response:
+            session['request_error'] = "Something went wrong."
+            return redirect( url_for('request_ticket') )
+        if 'error' in response:
+            session['request_error'] = response.get('error')
+            return redirect( url_for('request_ticket') )
         return redirect( url_for('account') )
 
     error = session.pop('request_error', '')

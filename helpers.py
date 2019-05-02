@@ -66,6 +66,7 @@ def build_objects( list_of_games ):
             to_return.append( new_obj )
 
     return to_return
+
 def edit_category_and_sport(list_of_games, sport_name, category):
     # iterate over the list of games, accessing by index allows to concurrently modify the list.
     for index in range(len(list_of_games)):
@@ -95,6 +96,7 @@ def insert_list_into_collection(mydb, args):
             item['_id'] = get_next_Value(collection, 'id_values', 1)
             collection.insert_one(item)
     return True
+
 # new_obj["Tickets"] = []
 # new_obj["Event"] = new_obj.get("Event").replace(new_obj.get("Category"), "UMD")
 # to_return.append( new_obj )
