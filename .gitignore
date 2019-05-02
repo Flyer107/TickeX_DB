@@ -1,3 +1,4 @@
 .env.ini
 flask_session/
+uploads/
 myenv/
