@@ -47,7 +47,7 @@ olefile==0.44
 passlib==1.7.1
 pdfrw==0.4
 pexpect==4.2.1
-Pillow==4.2.1
+Pillow==8.3.2
 plotly==2.0.14
 psycopg2==2.7.3.2
 ptyprocess==0.5.2
